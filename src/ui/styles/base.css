@@ -353,3 +353,8 @@ textarea.input {
 @keyframes fade {
   from { opacity: 0; }
 }
+.range {
+  width: 100%;
+  accent-color: var(--brass);
+  min-height: var(--touch);
+}

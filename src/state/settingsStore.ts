@@ -6,19 +6,22 @@ export type TableTheme = 'feltro' | 'madeira' | 'noite';
 interface Settings {
   tableTheme: TableTheme;
   reducedMotion: boolean;
+  soundEnabled: boolean;
+  volume: number;
 }
 
 interface SettingsState extends Settings {
   set: (patch: Partial<Settings>) => void;
 }
 
-const initial = readJSON<Settings>(KEYS.settings, { tableTheme: 'feltro', reducedMotion: false });
+const defaults: Settings = { tableTheme: 'feltro', reducedMotion: false, soundEnabled: true, volume: 0.7 };
+const initial: Settings = { ...defaults, ...readJSON<Partial<Settings>>(KEYS.settings, {}) };
 
 export const useSettings = create<SettingsState>((set, get) => ({
   ...initial,
   set: (patch) => {
     set(patch);
-    const { tableTheme, reducedMotion } = { ...get(), ...patch };
-    writeJSON(KEYS.settings, { tableTheme, reducedMotion });
+    const { tableTheme, reducedMotion, soundEnabled, volume } = { ...get(), ...patch };
+    writeJSON(KEYS.settings, { tableTheme, reducedMotion, soundEnabled, volume });
   },
 }));

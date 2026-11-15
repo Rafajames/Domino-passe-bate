@@ -104,6 +104,19 @@ export function PlayerScreen() {
             </div>
             <div className="rule-row rule-row--inline">
               <span className="list__main">
+                <span className="rule-row__label">Sons</span>
+                <span className="rule-row__hint">Pedra na mesa, passe, pontos e fim de rodada.</span>
+              </span>
+              <Switch label="Sons" checked={settings.soundEnabled} onChange={(soundEnabled) => settings.set({ soundEnabled })} />
+            </div>
+            {settings.soundEnabled && (
+              <div className="rule-row">
+                <label className="rule-row__label" htmlFor="vol">Volume</label>
+                <input id="vol" type="range" min={0} max={1} step={0.05} value={settings.volume} onChange={(e) => settings.set({ volume: Number(e.target.value) })} className="range" />
+              </div>
+            )}
+            <div className="rule-row rule-row--inline">
+              <span className="list__main">
                 <span className="rule-row__label">Reduzir animações</span>
                 <span className="rule-row__hint">Também segue a configuração do sistema.</span>
               </span>

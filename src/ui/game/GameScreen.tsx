@@ -20,6 +20,8 @@ import { RoundEndSheet } from './RoundEndSheet';
 import { Scoreboard } from './Scoreboard';
 import { Seat, type SeatPosition } from './Seat';
 import { eventText, tileName } from './text';
+import { useGameSounds } from './useGameSounds';
+import { playSound } from '../../services/sound';
 import './game.css';
 
 const POSITIONS: Record<number, SeatPosition[]> = {
@@ -49,6 +51,8 @@ export function GameScreen() {
   useEffect(() => {
     if (error) toast(error);
   }, [error, toast]);
+
+  useGameSounds(match);
 
   // Mostra o resumo do fim de rodada depois da animação da última pedra.
   const status = match?.status;
@@ -111,6 +115,7 @@ export function GameScreen() {
       } else toast('Toque na ponta onde quer jogar.');
       return;
     }
+    playSound('select');
     select(tileId);
   }
 

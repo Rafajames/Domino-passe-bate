@@ -1,12 +1,13 @@
 import type { MatchState } from '../../engine/types';
 import { useSettings, type TableTheme } from '../../state/settingsStore';
-import { Segmented } from '../components/Controls';
+import { Segmented, Switch } from '../components/Controls';
 import { RuleSummary } from '../components/RuleSummary';
 import { Sheet } from './Sheet';
 
 export function GameMenu({ match, onClose, onQuit }: { match: MatchState; onClose: () => void; onQuit: () => void }) {
   const tableTheme = useSettings((s) => s.tableTheme);
   const set = useSettings((s) => s.set);
+  const soundEnabled = useSettings((s) => s.soundEnabled);
   const f = match.frozen;
   return (
     <Sheet title="Partida" onClose={onClose}>
@@ -23,6 +24,10 @@ export function GameMenu({ match, onClose, onQuit }: { match: MatchState; onClos
               { value: 'noite', label: 'Noite' },
             ]}
           />
+        </section>
+        <section className="rule-row rule-row--inline" style={{ padding: 0, border: 0 }}>
+          <span className="rule-row__label">Sons</span>
+          <Switch label="Sons" checked={soundEnabled} onChange={(v) => set({ soundEnabled: v })} />
         </section>
         <section>
           <h3 className="section-title" style={{ marginBottom: 4 }}>Regras desta partida</h3>

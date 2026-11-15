@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { configureSound, unlockAudio } from './services/sound';
 import { useNav } from './state/navigation';
 import { useSettings } from './state/settingsStore';
 import { TileDefs } from './ui/components/Tile';
@@ -19,6 +20,21 @@ export function App() {
   const screen = useNav((s) => s.stack[s.stack.length - 1] ?? { name: 'home' as const });
   const tableTheme = useSettings((s) => s.tableTheme);
   const reducedMotion = useSettings((s) => s.reducedMotion);
+  const soundEnabled = useSettings((s) => s.soundEnabled);
+  const volume = useSettings((s) => s.volume);
+
+  useEffect(() => configureSound({ enabled: soundEnabled, volume }), [soundEnabled, volume]);
+
+  // Navegadores só liberam áudio depois de um toque/clique.
+  useEffect(() => {
+    const unlock = () => unlockAudio();
+    window.addEventListener('pointerdown', unlock);
+    window.addEventListener('keydown', unlock);
+    return () => {
+      window.removeEventListener('pointerdown', unlock);
+      window.removeEventListener('keydown', unlock);
+    };
+  }, []);
 
   useEffect(() => {
     document.documentElement.dataset.table = tableTheme;
