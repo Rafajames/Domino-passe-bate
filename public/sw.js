@@ -1,8 +1,10 @@
 /* Service worker: app shell offline. Navegação: rede primeiro; assets com hash: cache primeiro. */
-const CACHE = 'dpb-v1';
+const CACHE = 'dpb-v2';
+// Caminhos relativos ao escopo: funciona na raiz (Vercel) e em /<repo>/ (GitHub Pages).
+const ROOT = new URL('./', self.registration.scope).href;
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE).then((c) => c.addAll(['/', '/manifest.webmanifest', '/icon.svg'])));
+  event.waitUntil(caches.open(CACHE).then((c) => c.addAll([ROOT, ROOT + 'manifest.webmanifest', ROOT + 'icon.svg'])));
   self.skipWaiting();
 });
 
@@ -21,10 +23,10 @@ self.addEventListener('fetch', (event) => {
       fetch(req)
         .then((res) => {
           const copy = res.clone();
-          caches.open(CACHE).then((c) => c.put('/', copy));
+          caches.open(CACHE).then((c) => c.put(ROOT, copy));
           return res;
         })
-        .catch(() => caches.match('/')),
+        .catch(() => caches.match(ROOT)),
     );
     return;
   }
