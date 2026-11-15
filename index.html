@@ -11,7 +11,32 @@
     <title>Passe & Bate — Dominó</title>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div id="boot" style="min-height:100vh;display:grid;place-items:center;background:#0c1412;color:#c9d1cb;font-family:system-ui,sans-serif;text-align:center;padding:24px">
+        <div>
+          <p style="font-size:20px;margin:0 0 8px">Carregando o jogo…</p>
+          <p id="boot-msg" style="font-size:14px;color:#94a39b;margin:0"></p>
+        </div>
+      </div>
+    </div>
+    <noscript><p style="color:#fff;text-align:center">Ative o JavaScript para jogar.</p></noscript>
+    <script>
+      // Se o app não iniciar (navegador antigo ou erro), explica em vez de deixar a tela em branco.
+      (function () {
+        function show(msg) {
+          var el = document.getElementById('boot-msg');
+          if (el) el.textContent = msg;
+        }
+        window.addEventListener('error', function (e) {
+          show('Não foi possível iniciar: ' + (e.message || 'erro desconhecido') + '. Atualize o navegador e recarregue a página.');
+        });
+        setTimeout(function () {
+          if (document.getElementById('boot')) {
+            show('Está demorando. Se continuar assim, atualize o Chrome (Play Store) e recarregue a página.');
+          }
+        }, 8000);
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
