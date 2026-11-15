@@ -47,6 +47,16 @@ export function RoundEndSheet({ match, onNext, onExit, onRematch }: { match: Mat
                 </span>
               </div>
             ))}
+            {match.round.outOfPlay.length > 0 && (
+              <div className="round-end__hand">
+                <span className="round-end__who muted">Cemitério</span>
+                <span className="round-end__tiles">
+                  {match.round.outOfPlay.map((t) => (
+                    <TileSvg key={t.id} first={t.a} second={t.b} unit={14} />
+                  ))}
+                </span>
+              </div>
+            )}
           </div>
         )}
 

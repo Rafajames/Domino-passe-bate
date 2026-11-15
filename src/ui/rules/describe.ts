@@ -33,7 +33,11 @@ export function describeRules(rules: RuleSet, status: Record<string, RuleStatus>
     {
       key: 'handSize',
       label: 'Distribuição',
-      value: `${rules.handSize} pedras cada · ${rules.boneyard ? `dorme para compra${rules.boneyardReserve ? ` (reserva ${rules.boneyardReserve})` : ''}` : 'sem dorme'}`,
+      value: (() => {
+        const rest = 28 - rules.players * rules.handSize;
+        const restText = rest === 0 ? 'todas distribuídas' : rules.boneyard ? `${rest} no dorme para compra${rules.boneyardReserve ? ` (reserva ${rules.boneyardReserve})` : ''}` : `${rest} no cemitério`;
+        return `${rules.handSize} pedras cada · ${restText}${rules.dealMode === 'pick' ? ' · embaralhar e escolher' : ''}`;
+      })(),
       status: s('handSize') ?? s('boneyard'),
     },
     { key: 'opening', label: 'Saída', value: `${OPENING[rules.opening]}; depois, ${rules.nextRoundStarter === 'round-winner' ? 'quem venceu a rodada' : 'o próximo jogador'}`, status: s('opening') },

@@ -8,20 +8,22 @@ interface Settings {
   reducedMotion: boolean;
   soundEnabled: boolean;
   volume: number;
+  /** Esconde os assentos dos outros jogadores para a mesa ocupar a tela toda. */
+  focusMode: boolean;
 }
 
 interface SettingsState extends Settings {
   set: (patch: Partial<Settings>) => void;
 }
 
-const defaults: Settings = { tableTheme: 'feltro', reducedMotion: false, soundEnabled: true, volume: 0.7 };
+const defaults: Settings = { tableTheme: 'feltro', reducedMotion: false, soundEnabled: true, volume: 0.7, focusMode: false };
 const initial: Settings = { ...defaults, ...readJSON<Partial<Settings>>(KEYS.settings, {}) };
 
 export const useSettings = create<SettingsState>((set, get) => ({
   ...initial,
   set: (patch) => {
     set(patch);
-    const { tableTheme, reducedMotion, soundEnabled, volume } = { ...get(), ...patch };
-    writeJSON(KEYS.settings, { tableTheme, reducedMotion, soundEnabled, volume });
+    const { tableTheme, reducedMotion, soundEnabled, volume, focusMode } = { ...get(), ...patch };
+    writeJSON(KEYS.settings, { tableTheme, reducedMotion, soundEnabled, volume, focusMode });
   },
 }));

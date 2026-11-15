@@ -8,6 +8,8 @@ import type { GameEvent } from '../../engine/types';
 import { HUMAN_SEAT, useGame } from '../../state/gameStore';
 import { useNav } from '../../state/navigation';
 import { useProfiles } from '../../state/profilesStore';
+import { useSettings } from '../../state/settingsStore';
+import { PickPhase } from './PickPhase';
 import { Icon } from '../components/Icon';
 import { useToast } from '../components/Toast';
 import { BoardView, type SlotTarget } from './BoardView';
@@ -37,6 +39,9 @@ function lastIndex(events: readonly GameEvent[], pred: (e: GameEvent) => boolean
 
 export function GameScreen() {
   const match = useGame((s) => s.match);
+  const picking = useGame((s) => s.picking);
+  const focusMode = useSettings((s) => s.focusMode);
+  const setSettings = useSettings((s) => s.set);
   const selectedId = useGame((s) => s.selectedTileId);
   const error = useGame((s) => s.error);
   const { select, play, draw, pass, claim, nextRound, quit, startSolo, difficulty } = useGame.getState();
@@ -78,6 +83,23 @@ export function GameScreen() {
     const scoreEvent = r.events[lastScore];
     return { r, rules, myTurn, moves, playable, lastPlayEvent, lastScore, scoreEvent };
   }, [match]);
+
+  if (picking) {
+    const pr = picking.pending.kind === 'new' ? picking.pending.rules : match?.frozen.rules;
+    return (
+      <PickPhase
+        picking={picking}
+        players={pr?.players ?? 4}
+        boneyard={pr?.boneyard ?? false}
+        onExit={() => {
+          if (confirm('Sair da partida?')) {
+            quit();
+            reset();
+          }
+        }}
+      />
+    );
+  }
 
   if (!match || !derived) {
     return (
@@ -158,12 +180,21 @@ export function GameScreen() {
   const mySide = sideOf(HUMAN_SEAT, rules);
 
   return (
-    <main className={`game game--p${n}`}>
+    <main className={`game game--p${n} ${focusMode ? 'game--focus' : ''}`}>
       <header className="game__top">
         <button className="icon-btn" onClick={() => setMenuOpen(true)} aria-label="Menu da partida">
           <Icon name="menu" />
         </button>
         <Scoreboard match={match} pulseSide={pulseSide} />
+        <button
+          className={`icon-btn ${focusMode ? 'is-on' : ''}`}
+          onClick={() => setSettings({ focusMode: !focusMode })}
+          aria-pressed={focusMode}
+          aria-label={focusMode ? 'Mostrar jogadores' : 'Esconder jogadores e ampliar a mesa'}
+          title={focusMode ? 'Mostrar jogadores' : 'Ampliar mesa'}
+        >
+          <Icon name={focusMode ? 'shrink' : 'expand'} />
+        </button>
         <button className="icon-btn" onClick={() => setHistoryOpen(true)} aria-label="Histórico de jogadas">
           <Icon name="history" />
         </button>
@@ -196,10 +227,32 @@ export function GameScreen() {
             lastTurn={lastPlayEvent && lastPlayEvent.kind === 'play' ? lastPlayEvent.turn : null}
             scorePopup={scorePopup}
           />
-          {rules.boneyard && (
+          {rules.boneyard ? (
             <span className="game__boneyard" aria-label={`Dorme com ${r.boneyard.length} pedras`}>
               Dorme · {r.boneyard.length}
             </span>
+          ) : (
+            r.outOfPlay.length > 0 && (
+              <span className="game__boneyard" aria-label={`Cemitério com ${r.outOfPlay.length} pedras fora do jogo`}>
+                Cemitério · {r.outOfPlay.length}
+              </span>
+            )
+          )}
+          {focusMode && match.status === 'playing' && (
+            <div className="focus-strip" aria-hidden>
+              {match.players.map((pl, seat) =>
+                seat === HUMAN_SEAT ? null : (
+                  <span
+                    key={seat}
+                    className={`focus-strip__chip ${r.turn === seat ? 'is-active' : ''}`}
+                    style={{ ['--side' as string]: sideColor(sideOf(seat, rules), rules.teams) }}
+                  >
+                    {pl.avatar} {r.hands[seat]?.length ?? 0}
+                    {bubbleFor(seat) && <em key={bubbleFor(seat)!.key}>{bubbleFor(seat)!.text}</em>}
+                  </span>
+                ),
+              )}
+            </div>
           )}
         </div>
       </section>

@@ -21,6 +21,13 @@ export type OpeningRule =
 
 export type NextRoundStarter = 'round-winner' | 'next-seat';
 
+/**
+ * Como as mãos são formadas:
+ * - 'auto': o jogo embaralha e distribui;
+ * - 'pick': as pedras ficam viradas na mesa; cada jogador embaralha e escolhe as suas.
+ */
+export type DealMode = 'auto' | 'pick';
+
 export interface BatidaPoints {
   simples: number;
   carroca: number;
@@ -67,11 +74,16 @@ export interface RuleSet {
   players: 2 | 3 | 4;
   teams: boolean;
   handSize: number;
-  /** Dorme (pedras restantes disponíveis para compra). */
+  /**
+   * Dorme: pedras restantes disponíveis para compra.
+   * Desligado: as restantes vão para o cemitério (fora do jogo, ninguém compra).
+   */
   boneyard: boolean;
   /** Pedras que ficam no dorme sem poder ser compradas. */
   boneyardReserve: number;
   opening: OpeningRule;
+  /** Distribuição automática ou escolha das pedras viradas na mesa. Ausente em dados antigos = 'auto'. */
+  dealMode?: DealMode;
   /** Regra de abertura apenas da primeira rodada; nas seguintes, abre quem `nextRoundStarter` indicar com qualquer pedra. */
   nextRoundStarter: NextRoundStarter;
   spinner: boolean;

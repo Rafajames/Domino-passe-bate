@@ -2,7 +2,8 @@ import { create } from 'zustand';
 import { decideClaim, decideTurn } from '../ai/bots';
 import type { ArmId } from '../engine/board';
 import { applyAction, createMatch, startNextRound } from '../engine/match';
-import { createRng, randomSeed } from '../engine/rng';
+import { createRng, randomSeed, shuffle } from '../engine/rng';
+import { fullSet, type Tile } from '../engine/tiles';
 import { freezeRules } from '../engine/rules/freeze';
 import type { RuleProfile, RuleSet } from '../engine/rules/types';
 import { sideOf } from '../engine/scoring';
@@ -21,8 +22,25 @@ interface Persisted {
   difficulty: BotDifficulty;
 }
 
+/**
+ * Fase "embaralhar e escolher": as 28 pedras viradas na mesa.
+ * A ordem (`deck`) é secreta para a interface — ela só mostra versos.
+ */
+export interface PickingState {
+  deck: Tile[];
+  chosen: string[];
+  need: number;
+  shuffles: number;
+  pending: { kind: 'new'; profile: RuleProfile; rules: RuleSet; difficulty: BotDifficulty } | { kind: 'next' };
+}
+
 interface GameState {
   match: MatchState | null;
+  picking: PickingState | null;
+  shuffleTable: () => void;
+  togglePick: (tileId: string) => void;
+  autoPick: () => void;
+  confirmPick: () => void;
   difficulty: BotDifficulty;
   selectedTileId: string | null;
   error: string | null;
@@ -93,8 +111,75 @@ export const useGame = create<GameState>((set, get) => {
     botTimer = setTimeout(() => dispatch(action), delay);
   }
 
+  function beginPicking(rules: RuleSet, pending: PickingState['pending']) {
+    clearBotTimer();
+    set({ picking: { deck: shuffle(fullSet(6), botRng), chosen: [], need: rules.handSize, shuffles: 0, pending }, selectedTileId: null });
+  }
+
+  /** Mão do humano = pedras escolhidas; cada bot pega pedras ao acaso entre as que sobraram. */
+  function handsFromPicks(p: PickingState, players: number, handSize: number): Tile[][] {
+    const chosen = new Set(p.chosen);
+    const mine = p.deck.filter((t) => chosen.has(t.id));
+    let rest = shuffle(p.deck.filter((t) => !chosen.has(t.id)), botRng);
+    const hands: Tile[][] = [];
+    for (let seat = 0; seat < players; seat++) {
+      if (seat === HUMAN_SEAT) hands.push(mine);
+      else {
+        hands.push(rest.slice(0, handSize));
+        rest = rest.slice(handSize);
+      }
+    }
+    return hands;
+  }
+
+  function createSolo(profile: RuleProfile, rules: RuleSet, difficulty: BotDifficulty, presetHands?: Tile[][]) {
+    const frozen = freezeRules(profile, rules);
+    const me = usePlayer.getState().player;
+    const names = [...BOT_NAMES].sort(() => botRng() - 0.5);
+    const players: PlayerSlot[] = Array.from({ length: frozen.rules.players }, (_, seat) =>
+      seat === HUMAN_SEAT
+        ? { seat, name: me.name, kind: 'human', avatar: me.avatar }
+        : { seat, name: names[seat] ?? `Bot ${seat}`, kind: 'bot', difficulty, avatar: BOT_AVATARS[seat % BOT_AVATARS.length] ?? '🎲' },
+    );
+    const match = createMatch({ id: `solo-${Date.now().toString(36)}`, frozen, players, seed: randomSeed(), presetHands });
+    set({ difficulty, selectedTileId: null, picking: null });
+    commit(match);
+  }
+
   return {
     match: null,
+    picking: null,
+    shuffleTable: () => {
+      const p = get().picking;
+      if (p) set({ picking: { ...p, deck: shuffle(p.deck, botRng), shuffles: p.shuffles + 1 } });
+    },
+    togglePick: (tileId) => {
+      const p = get().picking;
+      if (!p) return;
+      const has = p.chosen.includes(tileId);
+      if (!has && p.chosen.length >= p.need) return;
+      set({ picking: { ...p, chosen: has ? p.chosen.filter((x) => x !== tileId) : [...p.chosen, tileId] } });
+    },
+    autoPick: () => {
+      const p = get().picking;
+      if (!p) return;
+      const free = shuffle(p.deck.filter((t) => !p.chosen.includes(t.id)), botRng).map((t) => t.id);
+      set({ picking: { ...p, chosen: [...p.chosen, ...free.slice(0, p.need - p.chosen.length)] } });
+    },
+    confirmPick: () => {
+      const p = get().picking;
+      if (!p || p.chosen.length !== p.need) return;
+      if (p.pending.kind === 'new') {
+        const { profile, rules, difficulty } = p.pending;
+        createSolo(profile, rules, difficulty, handsFromPicks(p, rules.players, rules.handSize));
+      } else {
+        const m = get().match;
+        if (!m || m.status !== 'round-over') return;
+        const r = m.frozen.rules;
+        set({ picking: null });
+        commit(startNextRound(m, handsFromPicks(p, r.players, r.handSize)));
+      }
+    },
     difficulty: 'normal',
     selectedTileId: null,
     error: null,
@@ -102,17 +187,13 @@ export const useGame = create<GameState>((set, get) => {
     startSolo: (profile, rules, difficulty) => {
       clearBotTimer();
       botRng = createRng(randomSeed());
-      const frozen = freezeRules(profile, rules);
-      const me = usePlayer.getState().player;
-      const names = [...BOT_NAMES].sort(() => botRng() - 0.5);
-      const players: PlayerSlot[] = Array.from({ length: frozen.rules.players }, (_, seat) =>
-        seat === HUMAN_SEAT
-          ? { seat, name: me.name, kind: 'human', avatar: me.avatar }
-          : { seat, name: names[seat] ?? `Bot ${seat}`, kind: 'bot', difficulty, avatar: BOT_AVATARS[seat % BOT_AVATARS.length] ?? '🎲' },
-      );
-      const match = createMatch({ id: `solo-${Date.now().toString(36)}`, frozen, players, seed: randomSeed() });
-      set({ difficulty, selectedTileId: null });
-      commit(match);
+      if (rules.dealMode === 'pick') {
+        removeKey(KEYS.activeMatch);
+        set({ match: null, difficulty });
+        beginPicking(rules, { kind: 'new', profile, rules, difficulty });
+        return;
+      }
+      createSolo(profile, rules, difficulty);
     },
     select: (tileId) => set({ selectedTileId: tileId }),
     play: (tileId, arm) => {
@@ -124,12 +205,14 @@ export const useGame = create<GameState>((set, get) => {
     claim: (points) => dispatch({ type: 'claim', seat: HUMAN_SEAT, points }),
     nextRound: () => {
       const m = get().match;
-      if (m?.status === 'round-over') commit(startNextRound(m));
+      if (m?.status !== 'round-over') return;
+      if (m.frozen.rules.dealMode === 'pick') beginPicking(m.frozen.rules, { kind: 'next' });
+      else commit(startNextRound(m));
     },
     quit: () => {
       clearBotTimer();
       removeKey(KEYS.activeMatch);
-      set({ match: null, selectedTileId: null });
+      set({ match: null, selectedTileId: null, picking: null });
     },
     resume: () => {
       const saved = readJSON<Persisted | null>(KEYS.activeMatch, null);

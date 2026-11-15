@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { applyAction, canDraw, canPass, legalMoves, startNextRound } from '../match';
+import { applyAction, canDraw, canPass, createMatch, legalMoves, startNextRound } from '../match';
 import { BUILTIN_PROFILES, freezeRules } from '../rules';
 import { playerView } from '../view';
 import { fullSet } from '../tiles';
 import type { MatchState } from '../types';
-import { matchWith, t, withRound } from './helpers';
+import { matchWith, players as helpersPlayers, t, withRound } from './helpers';
 
 function allTiles(m: MatchState) {
   const r = m.round;
@@ -152,5 +152,39 @@ describe('regras congeladas e informação oculta', () => {
     expect(drawEvent && drawEvent.kind === 'draw' ? drawEvent.tileId : 'x').toBeNull();
     expect(playerView(n, 1).events.find((e) => e.kind === 'draw')).toMatchObject({ tileId: '5-6' });
     expect(m.status).not.toBe('playing');
+  });
+});
+
+describe('embaralhar e escolher / cemitério', () => {
+  it('usa as mãos escolhidas e manda o resto para o cemitério quando não há dorme', () => {
+    const p = BUILTIN_PROFILES.find((x) => x.id === 'pb-paraiba')!;
+    const rules = { ...p.rules, handSize: 6, dealMode: 'pick' as const };
+    const deck = fullSet();
+    const hands = [0, 1, 2, 3].map((s) => deck.slice(s * 6, s * 6 + 6));
+    const m = createMatch({ id: 'x', frozen: freezeRules(p, rules), players: helpersPlayers(4), seed: 5, presetHands: hands });
+    expect(m.round.hands).toEqual(hands);
+    expect(m.round.boneyard).toHaveLength(0);
+    expect(m.round.outOfPlay).toHaveLength(4);
+    expect(m.round.outOfPlay.map((t) => t.id).sort()).toEqual(deck.slice(24).map((t) => t.id).sort());
+  });
+
+  it('rejeita mãos com tamanho errado ou pedras repetidas', () => {
+    const p = BUILTIN_PROFILES.find((x) => x.id === 'pb-paraiba')!;
+    const deck = fullSet();
+    const bad = [deck.slice(0, 7), deck.slice(0, 7), deck.slice(14, 21), deck.slice(21, 28)];
+    expect(() => createMatch({ id: 'x', frozen: freezeRules(p), players: helpersPlayers(4), seed: 1, presetHands: bad })).toThrow();
+    const short = [deck.slice(0, 6), deck.slice(7, 14), deck.slice(14, 21), deck.slice(21, 28)];
+    expect(() => createMatch({ id: 'x', frozen: freezeRules(p), players: helpersPlayers(4), seed: 1, presetHands: short })).toThrow();
+  });
+
+  it('com 6 cada e a carroça de seis no cemitério, abre a maior carroça disponível', () => {
+    const p = BUILTIN_PROFILES.find((x) => x.id === 'pb-paraiba')!;
+    const rules = { ...p.rules, handSize: 6 };
+    const out = new Set(['6-6', '0-1', '0-2', '0-3']);
+    const all = fullSet().filter((t) => !out.has(t.id));
+    const hands = [0, 1, 2, 3].map((s) => all.slice(s * 6, s * 6 + 6));
+    const m = createMatch({ id: 'x', frozen: freezeRules(p, rules), players: helpersPlayers(4), seed: 2, presetHands: hands });
+    expect(m.round.outOfPlay.some((t) => t.id === '6-6')).toBe(true);
+    expect(m.round.mustOpenWith).toBe('5-5');
   });
 });

@@ -22,17 +22,43 @@ function highestDoubleHolder(hands: readonly (readonly Tile[])[]): { seat: numbe
   return null;
 }
 
+/**
+ * Valida mãos escolhidas pelos jogadores (modo "embaralhar e escolher"):
+ * quantidade certa por jogador, pedras existentes e sem repetição.
+ */
+export function validatePresetHands(rules: RuleSet, hands: readonly (readonly Tile[])[]): void {
+  if (hands.length !== rules.players) throw new IllegalActionError('Mãos escolhidas não conferem com o número de jogadores.');
+  const valid = new Set(fullSet(6).map((t) => t.id));
+  const seen = new Set<string>();
+  for (const h of hands) {
+    if (h.length !== rules.handSize) throw new IllegalActionError(`Cada jogador deve escolher ${rules.handSize} pedras.`);
+    for (const t of h) {
+      if (!valid.has(t.id) || seen.has(t.id)) throw new IllegalActionError(`Pedra inválida ou repetida: ${t.id}`);
+      seen.add(t.id);
+    }
+  }
+}
+
 export function dealRound(
   rules: RuleSet,
   seed: number,
   index: number,
   previous: { starter: number; winnerSeat: number | null } | null,
+  presetHands?: readonly (readonly Tile[])[],
 ): RoundState {
   const rng = createRng((seed + Math.imul(index + 1, 0x9e3779b1)) >>> 0);
   const deck = shuffle(fullSet(6), rng);
   const hands: Tile[][] = [];
-  for (let s = 0; s < rules.players; s++) hands.push(deck.slice(s * rules.handSize, (s + 1) * rules.handSize));
-  const rest = deck.slice(rules.players * rules.handSize);
+  let rest: Tile[];
+  if (presetHands) {
+    validatePresetHands(rules, presetHands);
+    presetHands.forEach((h) => hands.push(h.slice()));
+    const taken = new Set(presetHands.flat().map((t) => t.id));
+    rest = deck.filter((t) => !taken.has(t.id));
+  } else {
+    for (let s = 0; s < rules.players; s++) hands.push(deck.slice(s * rules.handSize, (s + 1) * rules.handSize));
+    rest = deck.slice(rules.players * rules.handSize);
+  }
 
   let starter = 0;
   let mustOpenWith: string | null = null;
@@ -79,9 +105,11 @@ export interface CreateMatchInput {
   players: readonly PlayerSlot[];
   seed: number;
   now?: Date;
+  /** Mãos escolhidas pelos jogadores para a 1ª rodada (modo "embaralhar e escolher"). */
+  presetHands?: readonly (readonly Tile[])[];
 }
 
-export function createMatch({ id, frozen, players, seed, now = new Date() }: CreateMatchInput): MatchState {
+export function createMatch({ id, frozen, players, seed, now = new Date(), presetHands }: CreateMatchInput): MatchState {
   const rules = frozen.rules;
   if (players.length !== rules.players) throw new Error('Quantidade de jogadores não confere com as regras.');
   return {
@@ -90,7 +118,7 @@ export function createMatch({ id, frozen, players, seed, now = new Date() }: Cre
     frozen,
     players,
     scores: new Array<number>(sideCount(rules)).fill(0),
-    round: dealRound(rules, seed, 0, null),
+    round: dealRound(rules, seed, 0, null, presetHands),
     history: [],
     status: 'playing',
     winnerSide: null,
@@ -329,11 +357,11 @@ function applyClaim(match: MatchState, seat: number, points: number): MatchState
   return next;
 }
 
-export function startNextRound(match: MatchState): MatchState {
+export function startNextRound(match: MatchState, presetHands?: readonly (readonly Tile[])[]): MatchState {
   if (match.status !== 'round-over') throw new IllegalActionError('A rodada atual ainda não terminou.');
   const prev = match.round;
   const winnerSeat = prev.result?.winnerSeat ?? blockedWinnerSeat(match);
-  const round = dealRound(match.frozen.rules, match.seed, prev.index + 1, { starter: prev.starter, winnerSeat });
+  const round = dealRound(match.frozen.rules, match.seed, prev.index + 1, { starter: prev.starter, winnerSeat }, presetHands);
   return { ...match, round, status: 'playing' };
 }
 

@@ -21,9 +21,9 @@ interface Props {
   scorePopup: { key: number; points: number; color: string } | null;
 }
 
-const PAD = 1.2;
-const MIN_UNIT = 15;
-const MAX_UNIT = 44;
+const PAD = 0.9;
+const MIN_UNIT = 18;
+const MAX_UNIT = 64;
 
 export function BoardView({ board, targets, showValidity, onPlace, lastTurn, scorePopup }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -120,7 +120,7 @@ export function BoardView({ board, targets, showValidity, onPlace, lastTurn, sco
         </div>
       </div>
       <div className="board__zoom" role="group" aria-label="Zoom da mesa">
-        <button className="icon-btn" onClick={() => setZoom((z) => Math.min(2.5, z * 1.25))} aria-label="Aproximar">
+        <button className="icon-btn" onClick={() => setZoom((z) => Math.min(3, z * 1.25))} aria-label="Aproximar">
           <Icon name="plus" size={18} />
         </button>
         <button className="icon-btn" onClick={() => setZoom((z) => Math.max(0.6, z / 1.25))} aria-label="Afastar">

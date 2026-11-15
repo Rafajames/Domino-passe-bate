@@ -90,7 +90,12 @@ export function EditorScreen({ mode, profileId }: { mode: GameMode; profileId: s
             <RuleRow label="Pedras por jogador" hint={`${remaining} pedra(s) fora das mãos`} badge={badge('handSize')} inline>
               <Stepper label="pedras por jogador" value={rules.handSize} min={3} max={Math.floor(28 / rules.players)} onChange={(handSize) => patch({ handSize })} />
             </RuleRow>
-            <RuleRow label="Dorme (compra)" hint={rules.boneyard ? 'Sem jogada, compra-se do dorme.' : 'Sem jogada, passa a vez.'} badge={badge('boneyard')} inline>
+            <RuleRow
+              label="Dorme (compra)"
+              hint={rules.boneyard ? 'Sem jogada, compra-se do dorme.' : remaining > 0 ? `Sem jogada, passa a vez. As ${remaining} restantes vão para o cemitério.` : 'Sem jogada, passa a vez.'}
+              badge={badge('boneyard')}
+              inline
+            >
               <Switch label="Dorme" checked={rules.boneyard} disabled={remaining === 0} onChange={(boneyard) => patch({ boneyard })} />
             </RuleRow>
             {rules.boneyard && (
@@ -98,6 +103,17 @@ export function EditorScreen({ mode, profileId }: { mode: GameMode; profileId: s
                 <Stepper label="reserva do dorme" value={rules.boneyardReserve} min={0} max={Math.min(4, remaining)} onChange={(boneyardReserve) => patch({ boneyardReserve })} />
               </RuleRow>
             )}
+            <RuleRow label="Distribuição" hint="Embaralhar e escolher: as pedras ficam viradas na mesa e cada um escolhe as suas.">
+              <Segmented
+                label="Distribuição"
+                value={rules.dealMode ?? 'auto'}
+                onChange={(dealMode) => patch({ dealMode })}
+                options={[
+                  { value: 'auto', label: 'Automática' },
+                  { value: 'pick', label: 'Embaralhar e escolher' },
+                ]}
+              />
+            </RuleRow>
             <RuleRow label="Saída da primeira rodada" badge={badge('opening')}>
               <Segmented
                 label="Saída"
