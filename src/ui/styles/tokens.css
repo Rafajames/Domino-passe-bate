@@ -1,0 +1,126 @@
+/*
+ * Design system — "Mesa de Bar, Acabamento de Estúdio"
+ * Base escura e quente, feltro verde-petróleo, pedras de marfim e latão como cor de destaque.
+ * Ver docs/design-system.md.
+ */
+:root {
+  /* Superfícies do app */
+  --bg: #0c1412;
+  --bg-elev: #121c19;
+  --surface: #17231f;
+  --surface-2: #1e2d28;
+  --surface-3: #263832;
+  --line: rgba(243, 239, 230, 0.09);
+  --line-strong: rgba(243, 239, 230, 0.18);
+
+  /* Texto */
+  --text: #f3efe6;
+  --text-2: #c9d1cb;
+  --text-muted: #94a39b;
+  --text-on-accent: #1d1608;
+
+  /* Mesa */
+  --felt: #145244;
+  --felt-deep: #0a3329;
+  --felt-light: #1c6655;
+  --rail: #4a2f1b;
+  --rail-light: #6e4729;
+
+  /* Pedras */
+  --ivory: #f7f2e6;
+  --ivory-shade: #e2d8c3;
+  --ivory-edge: #bfb39a;
+  --pip: #1e1b16;
+  --pin: #b58a3c;
+
+  /* Destaques */
+  --brass: #e2b45c;
+  --brass-strong: #f3c977;
+  --brass-soft: rgba(226, 180, 92, 0.16);
+  --team-a: #f08c6c;
+  --team-a-soft: rgba(240, 140, 108, 0.16);
+  --team-b: #74b9e4;
+  --team-b-soft: rgba(116, 185, 228, 0.16);
+  --team-c: #b9a0f0;
+  --team-d: #9ad48a;
+  --success: #74d39c;
+  --danger: #ef6b5f;
+  --warning: #f1c35b;
+
+  /* Status de regra */
+  --status-confirmed: #74d39c;
+  --status-regional: #74b9e4;
+  --status-researched: #c7b3f5;
+  --status-pending: #f1c35b;
+
+  /* Tipografia */
+  --font-display: 'Fraunces Variable', 'Fraunces', Georgia, serif;
+  --font-ui: 'Manrope Variable', 'Manrope', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --fs-xs: 0.75rem;
+  --fs-sm: 0.875rem;
+  --fs-md: 1rem;
+  --fs-lg: 1.125rem;
+  --fs-xl: 1.375rem;
+  --fs-2xl: 1.75rem;
+  --fs-3xl: 2.375rem;
+
+  /* Espaçamento (base 4px) */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+  --sp-10: 40px;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-pill: 999px;
+
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-2: 0 6px 18px rgba(0, 0, 0, 0.35);
+  --shadow-3: 0 18px 48px rgba(0, 0, 0, 0.5);
+
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.4, 0.5, 1);
+  --dur-fast: 140ms;
+  --dur-med: 260ms;
+  --dur-slow: 420ms;
+
+  --touch: 44px;
+  --content-max: 560px;
+
+  color-scheme: dark;
+}
+
+/* Tema de mesa alternativo: madeira */
+[data-table='madeira'] {
+  --felt: #7a4e2d;
+  --felt-deep: #4b2e19;
+  --felt-light: #8f6039;
+  --rail: #2c1b0f;
+  --rail-light: #3f2716;
+}
+
+/* Tema de mesa alternativo: azul noturno */
+[data-table='noite'] {
+  --felt: #1b3a5c;
+  --felt-deep: #0f2238;
+  --felt-light: #25507c;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 1ms;
+    --dur-med: 1ms;
+    --dur-slow: 1ms;
+  }
+}
+
+[data-motion='reduced'] {
+  --dur-fast: 1ms;
+  --dur-med: 1ms;
+  --dur-slow: 1ms;
+}

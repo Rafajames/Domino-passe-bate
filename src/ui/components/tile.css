@@ -1,0 +1,35 @@
+.tile__face {
+  fill: url(#dpb-ivory);
+  stroke: var(--ivory-edge);
+  stroke-width: 0.025;
+}
+.tile__edge {
+  fill: #a89a7e;
+  opacity: 0.9;
+}
+.tile__divider {
+  stroke: #b9ad94;
+  stroke-width: 0.035;
+  stroke-linecap: round;
+}
+.tile__pin {
+  fill: var(--pin);
+}
+.tile__pip {
+  fill: url(#dpb-pip);
+}
+.tile-svg {
+  display: block;
+  overflow: visible;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.35));
+}
+.tile-back__face {
+  fill: url(#dpb-back);
+  stroke: rgba(226, 180, 92, 0.45);
+  stroke-width: 0.04;
+}
+.tile-back__inlay {
+  fill: none;
+  stroke: rgba(226, 180, 92, 0.3);
+  stroke-width: 0.03;
+}

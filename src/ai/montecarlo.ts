@@ -3,7 +3,7 @@ import { sideCount, sideOf } from '../engine/scoring';
 import type { FrozenRules } from '../engine/rules/types';
 import type { GameAction, MatchState, Move, RoundState } from '../engine/types';
 import { playerView, type PlayerView } from '../engine/view';
-import { normalScore, pickBest } from './heuristics';
+import { hardScore, normalScore, pickBest } from './heuristics';
 import { buildKnowledge, sampleWorld, type Knowledge } from './inference';
 
 /**
@@ -30,9 +30,14 @@ export function masterChoose(view: PlayerView, moves: readonly Move[], rng: () =
     }
   }
   if (worlds === 0) return pickBest(moves, (m) => normalScore(view, m), rng);
+  // Combina o valor simulado com a avaliação estratégica do nível Difícil:
+  // a simulação capta consequências concretas; a heurística, controle de naipes e bloqueio.
+  // Medido em benchmark: ajuda no All Fives; na Passe e Bate a simulação pura é mais forte.
+  const allFives = view.rules.mode === 'all-fives';
   return pickBest(moves, (m) => {
     const acc = totals.get(m)!;
-    return acc.sum / Math.max(1, acc.n) + normalScore(view, m) * 0.01;
+    const extra = allFives ? hardScore(view, k, m) : normalScore(view, m) * 0.01;
+    return acc.sum / Math.max(1, acc.n) + extra;
   }, rng);
 }
 
@@ -88,7 +93,7 @@ function rolloutAction(m: MatchState, seat: number, rng: () => number): GameActi
   const moves = legalMoves(m, seat);
   if (moves.length > 0) {
     const v = playerView(m, seat);
-    const mv = rng() < 0.15 ? (moves[Math.floor(rng() * moves.length)] as Move) : pickBest(moves, (x) => normalScore(v, x), rng);
+    const mv = rng() < 0.05 ? (moves[Math.floor(rng() * moves.length)] as Move) : pickBest(moves, (x) => normalScore(v, x), rng);
     return { type: 'play', seat, tileId: mv.tileId, arm: mv.arm };
   }
   return canDraw(m, seat) ? { type: 'draw', seat } : { type: 'pass', seat };
