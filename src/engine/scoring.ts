@@ -1,6 +1,6 @@
 import type { OpenEnd } from './board';
 import type { RuleSet } from './rules/types';
-import { handPips, hasValue, isDouble, type Tile } from './tiles';
+import { handPips, isDouble, type Tile } from './tiles';
 import type { BatidaType } from './types';
 
 export function sideOf(seat: number, rules: Pick<RuleSet, 'teams'>): number {
@@ -13,13 +13,19 @@ export function sideCount(rules: Pick<RuleSet, 'teams' | 'players'>): number {
 
 /**
  * Classifica a batida (Passe e Bate) a partir da última pedra e das pontas antes da jogada.
- * "Lá e lô": a pedra serve nas duas pontas. Ver docs/regras/passe-e-bate.md.
+ *
+ * "Lá e lô" (definição confirmada pelo usuário em 15/11/2026): uma ponta corresponde a
+ * um lado da pedra e a outra ponta corresponde ao OUTRO lado. Pontas 4 e 2 com a 4|2 é
+ * lá e lô; pontas 3 e 3 com a 3|5 NÃO é (batida simples). Na carroça os dois lados são
+ * iguais, então lá e lô de carroça exige as duas pontas iguais ao valor dela.
+ * Ver docs/regras/passe-e-bate.md.
  */
 export function classifyBatida(tile: Tile, endsBefore: readonly OpenEnd[]): BatidaType {
   const mainEnds = endsBefore.filter((e) => e.arm === 'left' || e.arm === 'right');
-  const fitsBoth = mainEnds.length === 2 && mainEnds.every((e) => hasValue(tile, e.value));
+  const [l, r] = mainEnds.map((e) => e.value);
+  const laELo = mainEnds.length === 2 && ((l === tile.a && r === tile.b) || (l === tile.b && r === tile.a));
   const dbl = isDouble(tile);
-  if (fitsBoth) return dbl ? 'laELoCarroca' : 'laELoSimples';
+  if (laELo) return dbl ? 'laELoCarroca' : 'laELoSimples';
   return dbl ? 'carroca' : 'simples';
 }
 

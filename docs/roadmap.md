@@ -2,7 +2,7 @@
 
 ## Próximos passos (em ordem)
 
-1. **Validar as regras pendentes** com jogadores da Paraíba e de Boa Vista: saída, jogo trancado, meta, duplas no Boa Vista e definição exata de lá e lô. Depois, publicar v2 dos perfis.
+1. **Validar as regras pendentes** com jogadores da Paraíba e de Boa Vista: saída, jogo trancado, meta e duplas no Boa Vista (a definição de lá e lô já foi confirmada na v2). Depois, publicar uma nova versão dos perfis.
 2. **Etapa 5 — Multiplayer**: Auth, Edge Function `match-action`, Realtime, salas, convites, reconexão e chat.
 3. **Etapa 6 — Competição**: tabelas de ranking por modalidade/formato/região/temporada, torneios (eliminatória, grupos, finais), conquistas e medalhas.
 4. **IA**: Web Worker para o Mestre; ajuste fino com o `npm run bench`.

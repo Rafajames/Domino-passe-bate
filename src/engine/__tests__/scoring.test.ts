@@ -17,6 +17,13 @@ describe('batidas paraibanas', () => {
     expect(classifyBatida(t(4, 4), ends(4, 4))).toBe('laELoCarroca');
   });
 
+  it('lá e lô exige um lado da pedra em cada ponta (pontas iguais não contam)', () => {
+    expect(classifyBatida(t(2, 4), ends(4, 2))).toBe('laELoSimples');
+    expect(classifyBatida(t(3, 5), ends(3, 3))).toBe('simples');
+    expect(classifyBatida(t(3, 5), ends(5, 5))).toBe('simples');
+    expect(classifyBatida(t(4, 4), ends(4, 1))).toBe('carroca');
+  });
+
   it('pontua conforme os valores de referência', () => {
     const hands = [[], [t(1, 1)], [], [t(2, 2)]];
     expect(scoreDomino(PASSE_BATE_PB, 0, hands, 'simples')).toEqual({ winnerSide: 0, points: 1 });

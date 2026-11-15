@@ -9,7 +9,7 @@
 - **Pesquisada**: padrão encontrado em fontes públicas.
 - **Pendente**: em revisão. Ou tem valor provisório configurável, ou fica desativada.
 
-## Perfil "Passe e Bate — Paraíba" (`pb-paraiba`, v1)
+## Perfil "Passe e Bate — Paraíba" (`pb-paraiba`, v2)
 
 | Regra | Valor | Status |
 |---|---|---|
@@ -25,14 +25,15 @@
 | Jogo trancado | Menor mão individual vence e leva 1 ponto. Empate entre duplas: ninguém pontua | **Pendente** |
 | Meta da partida | 6 pontos | **Pendente (valor provisório)** |
 
-### Variação "Quadrada vale 4" (`pb-paraiba-quadrada-4`, v1)
+### Variação "Quadrada vale 4" (`pb-paraiba-quadrada-4`, v2)
 
 É igual ao perfil acima, mas a lá e lô de carroça vale **4**.
 
-## Definições implementadas (premissas a confirmar)
+## Definições implementadas
 
-- **Lá e lô**: a última pedra *serve nas duas pontas abertas*, ou seja, poderia ser jogada de qualquer lado. Exemplo: pontas 4 e 2 com a pedra 4|2, ou pontas 3 e 3 com a pedra 3|5.
-- **Lá e lô de carroça**: lá e lô feita com uma carroça. Só acontece com as duas pontas iguais ao valor da carroça.
+- **Lá e lô** (**confirmada** pelo usuário em 15/11/2026): uma ponta corresponde a um lado da pedra e a outra ponta corresponde ao **outro** lado. Exemplo: pontas 4 e 2 com a pedra 4|2.
+  - **Não é lá e lô**: pontas iguais com pedra simples, como pontas 3 e 3 batendo com a 3|5. Isso é batida simples.
+- **Lá e lô de carroça**: como os dois lados da carroça são iguais, exige as duas pontas iguais ao valor dela. Exemplo: pontas 4 e 4 com a 4|4.
 - **Prioridade**: lá e lô de carroça > lá e lô > carroça > simples.
 - **Jogo trancado**: detectado quando todos os jogadores passam em sequência.
 

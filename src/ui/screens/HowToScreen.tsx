@@ -30,8 +30,9 @@ export function HowToScreen() {
           <p>Em duplas, quem bate (fica sem pedras) primeiro ganha pontos para a dupla. Valores do perfil paraibano:</p>
           <Fig tiles={[[2, 5]]} caption="Batida simples — 1 ponto" />
           <Fig tiles={[[5, 5]]} caption="Batida de carroça — 2 pontos" />
-          <Fig tiles={[[4, 2]]} caption="Lá e lô: serve nas duas pontas — 3 pontos" />
-          <Fig tiles={[[4, 4]]} caption="Lá e lô de carroça (quadrada) — 6 pontos (ou 4, conforme o perfil)" />
+          <Fig tiles={[[4, 2]]} caption="Lá e lô: pontas 4 e 2, um lado da pedra em cada ponta — 3 pontos" />
+          <Fig tiles={[[4, 4]]} caption="Lá e lô de carroça (quadrada): pontas 4 e 4 — 6 pontos (ou 4, conforme o perfil)" />
+          <p className="muted" style={{ fontSize: 'var(--fs-sm)' }}>Pontas iguais com pedra simples (ex.: pontas 3 e 3 batendo com a 3|5) não é lá e lô: é batida simples.</p>
           <p className="muted" style={{ fontSize: 'var(--fs-sm)' }}>Esses valores são regionais, não universais. Crie um perfil com os valores do seu grupo.</p>
         </section>
 
