@@ -13,6 +13,7 @@ import { OnlineScreen } from './ui/screens/OnlineScreen';
 import { PlayerScreen } from './ui/screens/PlayerScreen';
 import { ProfilesScreen } from './ui/screens/ProfilesScreen';
 import { SetupScreen } from './ui/screens/SetupScreen';
+import { ReplayScreen } from './ui/screens/ReplayScreen';
 import './ui/components/tile.css';
 import './ui/components/components.css';
 
@@ -56,6 +57,7 @@ export function App() {
     case 'player': content = <PlayerScreen />; break;
     case 'online': content = <OnlineScreen />; break;
     case 'howto': content = <HowToScreen />; break;
+    case 'replay': content = <ReplayScreen initialRound={screen.round} />; break;
   }
 
   return (

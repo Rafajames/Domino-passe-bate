@@ -30,4 +30,5 @@ export const KEYS = {
   activeMatch: 'dpb.match.v1',
   matchHistory: 'dpb.history.v1',
   settings: 'dpb.settings.v1',
+  lastGame: 'dpb.lastgame.v1',
 } as const;

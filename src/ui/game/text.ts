@@ -60,10 +60,11 @@ export function resultTitle(r: RoundResult): string {
 export function resultDetail(r: RoundResult, players: readonly PlayerSlot[], rules: RuleSet): string {
   const who = r.winnerSeat !== null ? players[r.winnerSeat]?.name : r.winnerSide !== null ? sideName(r.winnerSide, rules, players) : null;
   if (r.winnerSide === null) return r.type === 'blocked' ? 'Empate na menor mão. Ninguém pontuou.' : 'Ninguém pontuou.';
-  const verb = r.type === 'blocked' ? 'venceu com a menor mão' : 'bateu';
-  return `${who} ${verb} e ${rules.teams ? 'a dupla ganhou' : 'ganhou'} ${pts(r.points)}.`;
+  if (r.type === 'blocked') return `Vitória de ${who} pela menor mão: +${pts(r.points)}.`;
+  return `${who} bateu e ${rules.teams ? 'a dupla ganhou' : 'ganhou'} ${pts(r.points)}.`;
 }
 
 export function resultText(r: RoundResult, players: readonly PlayerSlot[], rules: RuleSet): string {
-  return `${resultTitle(r)} ${resultDetail(r, players, rules)}`;
+  const title = resultTitle(r);
+  return `${title}${title.endsWith('!') ? '' : '.'} ${resultDetail(r, players, rules)}`;
 }

@@ -52,6 +52,7 @@ export function GameScreen() {
   const error = useGame((s) => s.error);
   const { select, play, draw, pass, claim, nextRound, quit, startSolo, difficulty } = useGame.getState();
   const reset = useNav((s) => s.reset);
+  const go = useNav((s) => s.go);
   const getProfile = useProfiles((s) => s.get);
   const toast = useToast();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -358,6 +359,7 @@ export function GameScreen() {
             quit();
             reset();
           }}
+          onReview={() => go({ name: 'replay', round: match.round.index })}
           onRematch={() => {
             const p = getProfile(match.frozen.profileId);
             if (p) startSolo(p, { ...match.frozen.rules, assists: { ...match.frozen.rules.assists } }, difficulty);

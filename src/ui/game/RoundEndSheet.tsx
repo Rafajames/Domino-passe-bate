@@ -7,7 +7,7 @@ import { sideColor } from './colors';
 import { resultDetail, resultTitle, sideName } from './text';
 import { Sheet } from './Sheet';
 
-export function RoundEndSheet({ match, onNext, onExit, onRematch }: { match: MatchState; onNext: () => void; onExit: () => void; onRematch: () => void }) {
+export function RoundEndSheet({ match, onNext, onExit, onRematch, onReview }: { match: MatchState; onNext: () => void; onExit: () => void; onRematch: () => void; onReview: () => void }) {
   const rules = match.frozen.rules;
   const finished = match.status === 'finished';
   const r = match.round.result;
@@ -61,6 +61,9 @@ export function RoundEndSheet({ match, onNext, onExit, onRematch }: { match: Mat
         )}
 
         <div className="round-end__actions">
+          <button className="btn btn--block btn--ghost" onClick={onReview}>
+            Revisar {finished ? 'o jogo' : 'a rodada'} jogada por jogada
+          </button>
           {finished ? (
             <>
               <button className="btn btn--primary btn--block" onClick={onRematch}>Jogar de novo</button>

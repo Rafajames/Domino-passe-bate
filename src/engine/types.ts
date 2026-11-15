@@ -41,8 +41,17 @@ export interface PendingClaim {
   readonly points: number;
 }
 
+/** Situação no momento da distribuição (para revisar a rodada depois). */
+export interface RoundInitial {
+  readonly hands: readonly (readonly Tile[])[];
+  readonly boneyard: readonly Tile[];
+  readonly outOfPlay: readonly Tile[];
+}
+
 export interface RoundState {
   readonly index: number;
+  /** Ausente em partidas salvas antes da revisão existir. */
+  readonly initial?: RoundInitial;
   readonly hands: readonly (readonly Tile[])[];
   readonly boneyard: readonly Tile[];
   readonly outOfPlay: readonly Tile[];
@@ -67,8 +76,24 @@ export interface PlayerSlot {
 
 export type BotDifficulty = 'facil' | 'normal' | 'dificil' | 'mestre';
 
+/** Rodada encerrada guardada para revisão. */
+export interface ArchivedRound {
+  readonly index: number;
+  readonly starter: number;
+  readonly mustOpenWith: string | null;
+  readonly initial: RoundInitial;
+  readonly events: readonly GameEvent[];
+  readonly result: RoundResult | null;
+  readonly scoresBefore: readonly number[];
+  readonly scoresAfter: readonly number[];
+}
+
 export interface MatchState {
   readonly id: string;
+  /** Rodadas anteriores (para revisão). A rodada atual fica em `round`. */
+  readonly archive?: readonly ArchivedRound[];
+  /** Placar no início da rodada atual. */
+  readonly roundStartScores?: readonly number[];
   readonly seed: number;
   readonly frozen: FrozenRules;
   readonly players: readonly PlayerSlot[];

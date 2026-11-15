@@ -3,6 +3,7 @@ import { decideClaim, decideTurn } from '../ai/bots';
 import type { ArmId } from '../engine/board';
 import type { Dir } from '../ui/board/layout';
 import { applyAction, createMatch, startNextRound } from '../engine/match';
+import { buildGameRecord } from '../engine/replay';
 import { createRng, randomSeed, shuffle } from '../engine/rng';
 import { fullSet, type Tile } from '../engine/tiles';
 import { freezeRules } from '../engine/rules/freeze';
@@ -96,6 +97,8 @@ export const useGame = create<GameState>((set, get) => {
     const newRound = !prev || prev.id !== match.id || prev.round.index !== match.round.index;
     set(newRound ? { match, error: null, arrangement: {}, handOrder: [], flipped: [], paused: false } : { match, error: null });
     persist();
+    // A cada fim de rodada, guarda o jogo para a revisão ("último jogo").
+    if (match.status !== 'playing') writeJSON(KEYS.lastGame, buildGameRecord(match));
     if (match.status === 'finished') recordResult(match, get().difficulty);
     scheduleBots();
   }

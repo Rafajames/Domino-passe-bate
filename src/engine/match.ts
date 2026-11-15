@@ -3,7 +3,7 @@ import { createRng, shuffle } from './rng';
 import type { FrozenRules, RuleSet } from './rules/types';
 import { allFivesEndPoints, classifyBatida, scoreBlocked, scoreDomino, sideCount, sideOf } from './scoring';
 import { fullSet, handPips, type Tile } from './tiles';
-import type { GameAction, GameEvent, MatchState, Move, PlayerSlot, RoundResult, RoundState } from './types';
+import type { ArchivedRound, GameAction, GameEvent, MatchState, Move, PlayerSlot, RoundResult, RoundState } from './types';
 
 export class IllegalActionError extends Error {}
 
@@ -82,11 +82,14 @@ export function dealRound(
     }
   }
 
+  const boneyard = rules.boneyard ? rest : [];
+  const outOfPlay = rules.boneyard ? [] : rest;
   return {
     index,
+    initial: { hands: hands.map((h) => h.slice()), boneyard, outOfPlay },
     hands,
-    boneyard: rules.boneyard ? rest : [],
-    outOfPlay: rules.boneyard ? [] : rest,
+    boneyard,
+    outOfPlay,
     board: emptyBoard(),
     starter,
     turn: starter,
@@ -118,6 +121,8 @@ export function createMatch({ id, frozen, players, seed, now = new Date(), prese
     frozen,
     players,
     scores: new Array<number>(sideCount(rules)).fill(0),
+    roundStartScores: new Array<number>(sideCount(rules)).fill(0),
+    archive: [],
     round: dealRound(rules, seed, 0, null, presetHands),
     history: [],
     status: 'playing',
@@ -208,7 +213,8 @@ function endRound(match: MatchState, round: RoundState, result: RoundResult, sco
   return {
     ...match,
     scores: finalScores,
-    round: finishedRound,
+    // Partida decidida: não há mais o que marcar.
+    round: winner !== null ? { ...finishedRound, pendingClaim: null } : finishedRound,
     history: [...match.history, result],
     status: winner !== null ? 'finished' : 'round-over',
     winnerSide: winner,
@@ -362,7 +368,14 @@ export function startNextRound(match: MatchState, presetHands?: readonly (readon
   const prev = match.round;
   const winnerSeat = prev.result?.winnerSeat ?? blockedWinnerSeat(match);
   const round = dealRound(match.frozen.rules, match.seed, prev.index + 1, { starter: prev.starter, winnerSeat }, presetHands);
-  return { ...match, round, status: 'playing' };
+  const archived = archiveRound(match);
+  return {
+    ...match,
+    round,
+    status: 'playing',
+    archive: archived ? [...(match.archive ?? []), archived] : match.archive,
+    roundStartScores: match.scores,
+  };
 }
 
 /** No jogo trancado, inicia a próxima rodada o jogador de menor mão do lado vencedor. */
@@ -378,3 +391,19 @@ function blockedWinnerSeat(match: MatchState): number | null {
   return best;
 }
 
+
+/** Converte a rodada atual em registro de revisão (null se faltarem dados antigos). */
+export function archiveRound(match: MatchState): ArchivedRound | null {
+  const r = match.round;
+  if (!r.initial) return null;
+  return {
+    index: r.index,
+    starter: r.starter,
+    mustOpenWith: (r.events[0]?.kind === 'round-start' ? r.events[0].mustOpenWith : null) ?? null,
+    initial: r.initial,
+    events: r.events,
+    result: r.result,
+    scoresBefore: match.roundStartScores ?? new Array<number>(match.scores.length).fill(0),
+    scoresAfter: match.scores,
+  };
+}

@@ -6,3 +6,4 @@ export * from './scoring';
 export * from './match';
 export * from './view';
 export * from './rules';
+export * from './replay';

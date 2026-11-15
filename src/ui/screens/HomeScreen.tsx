@@ -5,6 +5,7 @@ import { usePlayer } from '../../state/playerStore';
 import { Avatar } from '../components/Avatar';
 import { Icon } from '../components/Icon';
 import { TileSvg } from '../components/Tile';
+import { loadLastGame } from './ReplayScreen';
 import './menus.css';
 
 export function HomeScreen() {
@@ -12,6 +13,7 @@ export function HomeScreen() {
   const player = usePlayer((s) => s.player);
   const resume = useGame((s) => s.resume);
   const saved = useMemo(() => hasSavedMatch(), []);
+  const lastGame = useMemo(() => loadLastGame(), []);
 
   return (
     <main className="screen home">
@@ -61,6 +63,17 @@ export function HomeScreen() {
             </span>
             <span className="badge badge--soon">Em breve</span>
           </button>
+          {lastGame && (
+            <button className="list__item" onClick={() => go({ name: 'replay' })}>
+              <Icon name="history" />
+              <span className="list__main">
+                <span className="list__label">Revisar último jogo</span>
+                <span className="list__hint">
+                  {lastGame.frozen.profileName} · {lastGame.rounds.length} rodada{lastGame.rounds.length === 1 ? '' : 's'} · jogada por jogada
+                </span>
+              </span>
+            </button>
+          )}
           <button className="list__item" onClick={() => go({ name: 'mode' })}>
             <Icon name="sliders" />
             <span className="list__main">

@@ -10,7 +10,8 @@ export type Screen =
   | { name: 'game' }
   | { name: 'player' }
   | { name: 'online' }
-  | { name: 'howto' };
+  | { name: 'howto' }
+  | { name: 'replay'; round?: number };
 
 interface NavState {
   stack: Screen[];

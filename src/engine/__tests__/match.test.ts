@@ -126,6 +126,16 @@ describe('fim de rodada', () => {
   });
 });
 
+describe('fim de partida no modo fiel', () => {
+  it('a marcação pendente é encerrada quando a batida decide a partida', () => {
+    let m = matchWith('af-padrao', { targetScore: 10, assists: { highlightPlayable: false, autoScore: false } });
+    m = withRound(m, { hands: [[t(5, 0)], [t(6, 6), t(4, 4)]], turn: 0, board: { root: { tile: t(5, 5), seat: 1, turn: 0, leftValue: 5, rightValue: 5 }, arms: { left: [], right: [], up: [], down: [] }, spinner: { arm: 'root' } } });
+    m = applyAction(m, { type: 'play', seat: 0, tileId: '0-5', arm: 'right' });
+    expect(m.status).toBe('finished');
+    expect(m.round.pendingClaim).toBeNull();
+  });
+});
+
 describe('regras congeladas e informação oculta', () => {
   it('alterar o perfil não altera a partida em andamento', () => {
     const p = structuredClone(BUILTIN_PROFILES[0]!);
