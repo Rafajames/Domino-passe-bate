@@ -179,6 +179,7 @@ export function GameScreen() {
   if (match.status !== 'playing') statusText = 'Rodada encerrada';
   else if (myTurn) {
     if (!r.board.root && r.mustOpenWith) statusText = `Você sai com a ${tileName(r.mustOpenWith)}`;
+    else if (!r.board.root && r.mustOpenDouble) statusText = 'Você sai — escolha uma carroça';
     else if (highlight && moves.length === 0) statusText = canBuy ? 'Sem jogada — compre do dorme' : 'Sem jogada — passe a vez';
     else statusText = selectedId ? 'Toque na ponta para jogar' : 'Sua vez — escolha uma pedra';
   } else statusText = `Vez de ${turnPlayer?.name ?? ''}`;

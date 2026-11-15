@@ -56,8 +56,15 @@ export function dealRound(
     const taken = new Set(presetHands.flat().map((t) => t.id));
     rest = deck.filter((t) => !taken.has(t.id));
   } else {
-    for (let s = 0; s < rules.players; s++) hands.push(deck.slice(s * rules.handSize, (s + 1) * rules.handSize));
-    rest = deck.slice(rules.players * rules.handSize);
+    let order = deck;
+    // "Sair de carroça": se nenhuma mão tiver carroça, embaralha de novo (determinístico).
+    for (let attempt = 0; attempt < 50; attempt++) {
+      const dealt = Array.from({ length: rules.players }, (_, s) => order.slice(s * rules.handSize, (s + 1) * rules.handSize));
+      if (!rules.openWithDouble || dealt.some((h) => h.some((t) => t.a === t.b))) break;
+      order = shuffle(fullSet(6), rng);
+    }
+    for (let s = 0; s < rules.players; s++) hands.push(order.slice(s * rules.handSize, (s + 1) * rules.handSize));
+    rest = order.slice(rules.players * rules.handSize);
   }
 
   let starter = 0;
@@ -82,6 +89,19 @@ export function dealRound(
     }
   }
 
+  // Sair de carroça: se quem sairia não tem carroça, sai o próximo da roda que tiver.
+  let mustOpenDouble = false;
+  if (rules.openWithDouble && !mustOpenWith) {
+    for (let k = 0; k < rules.players; k++) {
+      const seat = (starter + k) % rules.players;
+      if ((hands[seat] ?? []).some((t) => t.a === t.b)) {
+        starter = seat;
+        mustOpenDouble = true;
+        break;
+      }
+    }
+  }
+
   const boneyard = rules.boneyard ? rest : [];
   const outOfPlay = rules.boneyard ? [] : rest;
   return {
@@ -96,8 +116,9 @@ export function dealRound(
     turnNumber: 0,
     passesInRow: 0,
     mustOpenWith,
+    mustOpenDouble,
     pendingClaim: null,
-    events: [{ kind: 'round-start', round: index, starter, mustOpenWith }],
+    events: [{ kind: 'round-start', round: index, starter, mustOpenWith, mustOpenDouble }],
     result: null,
   };
 }
@@ -137,9 +158,14 @@ export function legalMovesFor(
   board: BoardState,
   hand: readonly Tile[],
   mustOpenWith: string | null,
+  mustOpenDouble = false,
 ): Move[] {
   if (!board.root) {
-    const candidates = mustOpenWith ? hand.filter((t) => t.id === mustOpenWith) : hand;
+    const candidates = mustOpenWith
+      ? hand.filter((t) => t.id === mustOpenWith)
+      : mustOpenDouble
+        ? hand.filter((t) => t.a === t.b)
+        : hand;
     return candidates.map((t) => ({ tileId: t.id, arm: 'root' as const }));
   }
   const ends = openEnds(board);
@@ -151,7 +177,7 @@ export function legalMovesFor(
 export function legalMoves(match: MatchState, seat: number): Move[] {
   const r = match.round;
   if (match.status !== 'playing' || r.turn !== seat) return [];
-  return legalMovesFor(r.board, r.hands[seat] ?? [], r.mustOpenWith);
+  return legalMovesFor(r.board, r.hands[seat] ?? [], r.mustOpenWith, r.mustOpenDouble);
 }
 
 export function drawableCount(round: RoundState, rules: RuleSet): number {
@@ -269,6 +295,7 @@ export function applyAction(match: MatchState, action: GameAction): MatchState {
         pendingClaim,
         passesInRow: 0,
         mustOpenWith: null,
+        mustOpenDouble: false,
         turnNumber: round.turnNumber + 1,
         turn: (action.seat + 1) % rules.players,
       };
@@ -400,6 +427,7 @@ export function archiveRound(match: MatchState): ArchivedRound | null {
     index: r.index,
     starter: r.starter,
     mustOpenWith: (r.events[0]?.kind === 'round-start' ? r.events[0].mustOpenWith : null) ?? null,
+    mustOpenDouble: r.events[0]?.kind === 'round-start' ? (r.events[0].mustOpenDouble ?? false) : false,
     initial: r.initial,
     events: r.events,
     result: r.result,

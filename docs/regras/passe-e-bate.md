@@ -18,6 +18,7 @@
 | Sem jogada | Passa a vez | Regional |
 | Saída da 1ª rodada | Quem tem a carroça de seis sai com ela | **Pendente** |
 | Saída das seguintes | Quem venceu a rodada, com qualquer pedra | **Pendente** |
+| Sair só de carroça (opcional, desligado por padrão) | Toda rodada começa com uma carroça. Sem carroça, sai o próximo da roda que tiver; se ninguém tiver, embaralha de novo | **Pendente** (o que fazer quando quem sairia não tem carroça) |
 | Batida simples | 1 | Regional (referência registrada) |
 | Batida de carroça | 2 | Regional |
 | Lá e lô com pedra simples | 3 | Regional |

@@ -41,6 +41,9 @@ export function describeRules(rules: RuleSet, status: Record<string, RuleStatus>
       status: s('handSize') ?? s('boneyard'),
     },
     { key: 'opening', label: 'Saída', value: `${OPENING[rules.opening]}; depois, ${rules.nextRoundStarter === 'round-winner' ? 'quem venceu a rodada' : 'o próximo jogador'}`, status: s('opening') },
+    ...(rules.openWithDouble
+      ? [{ key: 'openWithDouble', label: 'Sair de carroça', value: 'Toda rodada começa com uma carroça; sem carroça, sai o próximo que tiver', status: s('openWithDouble') ?? ('pending' as const) }]
+      : []),
   ];
   if (rules.mode === 'passe-bate') {
     const b = rules.passeBate.batidaPoints;

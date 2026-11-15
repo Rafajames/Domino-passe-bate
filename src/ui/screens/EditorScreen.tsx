@@ -126,6 +126,14 @@ export function EditorScreen({ mode, profileId }: { mode: GameMode; profileId: s
                 ]}
               />
             </RuleRow>
+            <RuleRow
+              label="Sair só de carroça"
+              hint="Toda rodada começa com uma carroça. Sem carroça, sai o próximo da roda que tiver; se ninguém tiver, embaralha de novo."
+              badge={badge('openWithDouble')}
+              inline
+            >
+              <Switch label="Sair só de carroça" checked={rules.openWithDouble ?? false} onChange={(openWithDouble) => patch({ openWithDouble })} />
+            </RuleRow>
             <RuleRow label="Quem sai nas rodadas seguintes" badge={badge('nextRoundStarter')}>
               <Segmented
                 label="Próxima saída"

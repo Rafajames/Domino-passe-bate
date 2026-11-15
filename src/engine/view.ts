@@ -20,6 +20,7 @@ export interface PlayerView {
   readonly turn: number;
   readonly turnNumber: number;
   readonly mustOpenWith: string | null;
+  readonly mustOpenDouble: boolean;
   readonly scores: readonly number[];
   readonly events: readonly GameEvent[];
   readonly myPendingClaim: boolean;
@@ -46,6 +47,7 @@ export function playerView(match: MatchState, seat: number): PlayerView {
     turn: r.turn,
     turnNumber: r.turnNumber,
     mustOpenWith: r.mustOpenWith && (r.hands[seat] ?? []).some((t) => t.id === r.mustOpenWith) ? r.mustOpenWith : null,
+    mustOpenDouble: !r.board.root && r.turn === seat && !!r.mustOpenDouble,
     scores: match.scores,
     events: r.events.map((e) => redact(e, seat)),
     myPendingClaim: r.pendingClaim?.seat === seat,
@@ -55,5 +57,5 @@ export function playerView(match: MatchState, seat: number): PlayerView {
 
 export function viewLegalMoves(view: PlayerView): Move[] {
   if (view.turn !== view.seat) return [];
-  return legalMovesFor(view.board, view.hand, view.mustOpenWith);
+  return legalMovesFor(view.board, view.hand, view.mustOpenWith, view.mustOpenDouble);
 }

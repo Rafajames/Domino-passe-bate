@@ -126,6 +126,43 @@ describe('fim de rodada', () => {
   });
 });
 
+describe('sair de carroça', () => {
+  it('toda rodada começa com carroça; sem carroça, sai o próximo que tiver', () => {
+    for (let seed = 1; seed <= 30; seed++) {
+      let m = matchWith('af-padrao', { openWithDouble: true, targetScore: 10_000 }, seed);
+      for (let r = 0; r < 3; r++) {
+        const seat = m.round.turn;
+        const moves = legalMoves(m, seat);
+        expect(moves.length).toBeGreaterThan(0);
+        for (const mv of moves) expect(mv.tileId.split('-')[0]).toBe(mv.tileId.split('-')[1]);
+        // joga até o fim da rodada
+        let guard = 0;
+        while (m.status === 'playing' && guard++ < 300) {
+          const s = m.round.turn;
+          const ms = legalMoves(m, s);
+          if (ms.length) m = applyAction(m, { type: 'play', seat: s, tileId: ms[0]!.tileId, arm: ms[0]!.arm });
+          else m = applyAction(m, canDraw(m, s) ? { type: 'draw', seat: s } : { type: 'pass', seat: s });
+        }
+        if (m.status !== 'round-over') break;
+        m = startNextRound(m);
+      }
+    }
+  });
+
+  it('se o vencedor não tem carroça, a saída passa ao próximo da roda com carroça', () => {
+    const p = BUILTIN_PROFILES.find((x) => x.id === 'pb-paraiba')!;
+    const rules = { ...p.rules, opening: 'any' as const, openWithDouble: true };
+    const deck = fullSet();
+    const doubles = deck.filter((x) => x.a === x.b);
+    const others = deck.filter((x) => x.a !== x.b);
+    // assento 0..1 sem carroça; assento 2 com carroças
+    const hands = [others.slice(0, 7), others.slice(7, 14), [...doubles.slice(0, 7)], others.slice(14, 21)];
+    const m = createMatch({ id: 'x', frozen: freezeRules(p, rules), players: helpersPlayers(4), seed: 3, presetHands: hands });
+    expect(m.round.turn).toBe(2);
+    expect(m.round.mustOpenDouble).toBe(true);
+  });
+});
+
 describe('fim de partida no modo fiel', () => {
   it('a marcação pendente é encerrada quando a batida decide a partida', () => {
     let m = matchWith('af-padrao', { targetScore: 10, assists: { highlightPlayable: false, autoScore: false } });

@@ -65,6 +65,7 @@ function simulate(view: PlayerView, world: { hands: RoundState['hands']; boneyar
       turnNumber: view.turnNumber,
       passesInRow: 0,
       mustOpenWith: view.mustOpenWith,
+      mustOpenDouble: view.mustOpenDouble,
       pendingClaim: null,
       events: view.events,
       result: null,

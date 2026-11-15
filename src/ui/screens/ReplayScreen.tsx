@@ -89,7 +89,7 @@ export function ReplayScreen({ initialRound }: { initialRound?: number }) {
   const lastPlay = [...m.round.events].reverse().find((e) => e.kind === 'play');
   const caption =
     step === 0
-      ? `Distribuição — ${record.players[round.starter]?.name} sai${round.mustOpenWith ? ` com a ${tileName(round.mustOpenWith)}` : ''}.`
+      ? `Distribuição — ${record.players[round.starter]?.name} sai${round.mustOpenWith ? ` com a ${tileName(round.mustOpenWith)}` : round.mustOpenDouble ? ' de carroça' : ''}.`
       : current.event
         ? eventText(current.event, record.players, rules)
         : '';

@@ -82,6 +82,12 @@ export interface RuleSet {
   /** Pedras que ficam no dorme sem poder ser compradas. */
   boneyardReserve: number;
   opening: OpeningRule;
+  /**
+   * Toda rodada começa obrigatoriamente com uma carroça ("sair de carroça").
+   * Se quem sairia não tem carroça, sai o próximo da roda que tiver (PENDENTE de confirmação regional);
+   * se ninguém tiver, embaralha de novo. Ausente em dados antigos = false.
+   */
+  openWithDouble?: boolean;
   /** Distribuição automática ou escolha das pedras viradas na mesa. Ausente em dados antigos = 'auto'. */
   dealMode?: DealMode;
   /** Regra de abertura apenas da primeira rodada; nas seguintes, abre quem `nextRoundStarter` indicar com qualquer pedra. */

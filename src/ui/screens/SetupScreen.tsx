@@ -5,7 +5,7 @@ import { useGame } from '../../state/gameStore';
 import { useNav } from '../../state/navigation';
 import { useProfiles } from '../../state/profilesStore';
 import { Icon } from '../components/Icon';
-import { Segmented } from '../components/Controls';
+import { Segmented, Switch } from '../components/Controls';
 import type { DealMode } from '../../engine/rules/types';
 import { RuleSummary } from '../components/RuleSummary';
 import { ScreenHeader } from '../components/ScreenHeader';
@@ -23,6 +23,7 @@ export function SetupScreen({ profileId }: { profileId: string }) {
   const [handSize, setHandSize] = useState(profile?.rules.handSize ?? 7);
   const [boneyard, setBoneyard] = useState(profile?.rules.boneyard ?? false);
   const [dealMode, setDealMode] = useState<DealMode>(profile?.rules.dealMode ?? 'auto');
+  const [openWithDouble, setOpenWithDouble] = useState(profile?.rules.openWithDouble ?? false);
 
   if (!profile) return null;
   const players = profile.rules.players;
@@ -36,6 +37,7 @@ export function SetupScreen({ profileId }: { profileId: string }) {
     handSize,
     boneyard: remaining > 0 ? boneyard : false,
     dealMode,
+    openWithDouble,
     assists: faithful ? { highlightPlayable: false, autoScore: false } : { highlightPlayable: true, autoScore: true },
   };
   const opponents = rules.teams ? 'Você e um bot parceiro contra dois bots' : `Você contra ${rules.players - 1} bot${rules.players > 2 ? 's' : ''}`;
@@ -102,6 +104,13 @@ export function SetupScreen({ profileId }: { profileId: string }) {
               { value: 'pick', label: 'Embaralhar e escolher' },
             ]}
           />
+          <div className="rule-row rule-row--inline" style={{ padding: 0, border: 0 }}>
+            <span className="list__main">
+              <span className="rule-row__label">Sair só de carroça</span>
+              <span className="rule-row__hint">Toda rodada começa com uma carroça. Sem carroça, sai o próximo da roda que tiver.</span>
+            </span>
+            <Switch label="Sair só de carroça" checked={openWithDouble} onChange={setOpenWithDouble} />
+          </div>
           {dealMode === 'pick' && (
             <p className="muted" style={{ fontSize: 'var(--fs-xs)' }}>
               As 28 pedras ficam viradas na mesa. Você embaralha e escolhe as suas; os bots pegam das que sobrarem.

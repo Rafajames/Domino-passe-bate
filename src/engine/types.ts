@@ -16,7 +16,7 @@ export interface Move {
 }
 
 export type GameEvent =
-  | { readonly kind: 'round-start'; readonly round: number; readonly starter: number; readonly mustOpenWith: string | null }
+  | { readonly kind: 'round-start'; readonly round: number; readonly starter: number; readonly mustOpenWith: string | null; readonly mustOpenDouble?: boolean }
   | { readonly kind: 'play'; readonly seat: number; readonly tile: Tile; readonly arm: ArmId | 'root'; readonly turn: number; readonly endsSum: number }
   | { readonly kind: 'draw'; readonly seat: number; readonly turn: number; readonly tileId: string | null }
   | { readonly kind: 'pass'; readonly seat: number; readonly turn: number; readonly openValues: readonly number[] }
@@ -61,6 +61,8 @@ export interface RoundState {
   readonly turnNumber: number;
   readonly passesInRow: number;
   readonly mustOpenWith: string | null;
+  /** A primeira pedra da rodada tem de ser uma carroça (qualquer uma). */
+  readonly mustOpenDouble?: boolean;
   readonly pendingClaim: PendingClaim | null;
   readonly events: readonly GameEvent[];
   readonly result: RoundResult | null;
@@ -81,6 +83,7 @@ export interface ArchivedRound {
   readonly index: number;
   readonly starter: number;
   readonly mustOpenWith: string | null;
+  readonly mustOpenDouble?: boolean;
   readonly initial: RoundInitial;
   readonly events: readonly GameEvent[];
   readonly result: RoundResult | null;

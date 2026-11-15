@@ -34,7 +34,7 @@ export function eventText(e: GameEvent, players: readonly PlayerSlot[], rules: R
   const name = (seat: number) => players[seat]?.name ?? `Jogador ${seat + 1}`;
   switch (e.kind) {
     case 'round-start':
-      return `Rodada ${e.round + 1}: ${name(e.starter)} sai${e.mustOpenWith ? ` com a ${tileName(e.mustOpenWith)}` : ''}.`;
+      return `Rodada ${e.round + 1}: ${name(e.starter)} sai${e.mustOpenWith ? ` com a ${tileName(e.mustOpenWith)}` : e.mustOpenDouble ? ' de carroça' : ''}.`;
     case 'play':
       return `${name(e.seat)} jogou ${e.tile.a === e.tile.b ? 'a ' : ''}${tileName(e.tile.id)} ${ARM_LABEL[e.arm]}.${rules.mode === 'all-fives' ? ` Pontas: ${e.endsSum}.` : ''}`;
     case 'draw':
