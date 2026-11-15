@@ -788,3 +788,79 @@
   white-space: nowrap;
   animation: bubble 1.9s var(--ease-out) forwards;
 }
+
+/* ---- Pausa / organizar ---- */
+.pause-banner {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  top: 8px;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  background: rgba(12, 20, 18, 0.82);
+  border: 1px solid var(--brass);
+  font-size: var(--fs-xs);
+  color: var(--text-2);
+  pointer-events: none;
+  animation: rise var(--dur-med) var(--ease-out), banner-out 600ms ease 6s forwards;
+}
+@keyframes banner-out {
+  to { opacity: 0; transform: translateY(-6px); }
+}
+.pause-banner strong {
+  color: var(--brass-strong);
+  font-size: var(--fs-sm);
+}
+.pause-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  padding: var(--sp-2) var(--sp-3) 0;
+}
+.board-tile-btn {
+  cursor: pointer;
+  outline: none;
+}
+.board-tile--editable .tile__face {
+  stroke: var(--brass-strong);
+  stroke-width: 0.05;
+  stroke-dasharray: 0.12 0.08;
+}
+.board-tile-btn:hover .tile__face,
+.board-tile-btn:focus-visible .tile__face {
+  fill: #fff7df;
+}
+.slot--alt .slot__rect {
+  fill: rgba(255, 255, 255, 0.05);
+  stroke: rgba(243, 201, 119, 0.65);
+  stroke-dasharray: 0.08 0.1;
+  animation: none;
+  opacity: 0.85;
+}
+.slot--alt .slot__label {
+  font-size: 0.42px;
+  opacity: 0.9;
+}
+.hand__tile {
+  touch-action: none;
+}
+.hand__tile.is-dragging {
+  z-index: 2;
+  transition: none;
+  filter: drop-shadow(0 12px 14px rgba(0, 0, 0, 0.55));
+}
+.hand--organizing .hand__tile {
+  outline: 1px dashed rgba(243, 201, 119, 0.5);
+  outline-offset: 3px;
+}
+@media (max-width: 400px) {
+  .game__top .icon-btn {
+    width: 38px;
+    height: 38px;
+  }
+}

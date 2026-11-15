@@ -18,7 +18,7 @@ describe('layout da mesa', () => {
     const l = layoutBoard(b, 1.5);
     expect(l.tiles[0]).toMatchObject({ w: 1, h: 2 });
     expect(l.tiles[1]).toMatchObject({ w: 2, h: 1, first: 6, second: 3 });
-    expect(l.slots.map((s) => s.arm).sort()).toEqual(openEnds(b).map((e) => e.arm).sort());
+    expect(l.slots.filter((s) => s.primary).map((s) => s.arm).sort()).toEqual(openEnds(b).map((e) => e.arm).sort());
   });
 
   it('a metade encostada mostra o valor que casa com a pedra vizinha', () => {
@@ -85,5 +85,33 @@ describe('vagas', () => {
         } else m = applyAction(m, m.round.boneyard.length ? { type: 'draw', seat } : { type: 'pass', seat });
       }
     }
+  });
+});
+
+describe('arrumação escolhida pelo jogador', () => {
+  it('oferece vagas alternativas (reto e virar) sem encostar em outras pedras', () => {
+    let b: BoardState = placeTile(emptyBoard(), makeTile(2, 5), 'root', 0, 0, false);
+    b = placeTile(b, makeTile(5, 1), 'right', 1, 1, false);
+    const l = layoutBoard(b, 0.6);
+    const right = l.slots.filter((s) => s.arm === 'right');
+    expect(right.length).toBeGreaterThanOrEqual(2);
+    expect(new Set(right.map((s) => s.dir)).size).toBe(right.length);
+    expect(hasCollision(l, true)).toBe(false);
+  });
+
+  it('respeita a direção escolhida e as pedras seguintes continuam dali', () => {
+    let b: BoardState = placeTile(emptyBoard(), makeTile(2, 5), 'root', 0, 0, false);
+    b = placeTile(b, makeTile(5, 1), 'right', 1, 1, false);
+    b = placeTile(b, makeTile(1, 3), 'right', 2, 2, false);
+    const auto = layoutBoard(b, 0.6);
+    expect(auto.tiles.find((t) => t.id === '1-5')?.dir).toBe('E');
+    const arranged = layoutBoard(b, 0.6, { '1-5': 'S' });
+    const t15 = arranged.tiles.find((t) => t.id === '1-5')!;
+    const t13 = arranged.tiles.find((t) => t.id === '1-3')!;
+    expect(t15.dir).toBe('S');
+    expect(t15.h).toBe(2);
+    expect(t13.dir).toBe('S');
+    expect(t13.y).toBeGreaterThan(t15.y);
+    expect(hasCollision(arranged)).toBe(false);
   });
 });

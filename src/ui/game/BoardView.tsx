@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ArmId, BoardState } from '../../engine/board';
-import { layoutBoard } from '../board/layout';
+import { hasCollision, layoutBoard, type Arrangement, type Dir } from '../board/layout';
 import { Icon } from '../components/Icon';
 import { TileShape } from '../components/Tile';
 import { ARM_LABEL } from './text';
@@ -16,22 +16,49 @@ interface Props {
   board: BoardState;
   targets: SlotTarget[] | null;
   showValidity: boolean;
-  onPlace: (arm: ArmId | 'root') => void;
+  /** `dir` só vem quando o jogador escolhe uma vaga alternativa. */
+  onPlace: (arm: ArmId | 'root', dir?: Dir) => void;
   lastTurn: number | null;
   scorePopup: { key: number; points: number; color: string } | null;
+  arrangement: Arrangement;
+  /** Modo organizar (jogo pausado): tocar numa pedra da mesa muda a direção dela. */
+  organizing: boolean;
+  onArrange: (tileId: string, dir: Dir) => void;
 }
+
+const PERP: Record<Dir, Dir[]> = { E: ['N', 'S'], W: ['N', 'S'], N: ['E', 'W'], S: ['E', 'W'] };
+const ARROW: Record<Dir, string> = { N: '↑', S: '↓', E: '→', W: '←' };
 
 const PAD = 0.9;
 const MIN_UNIT = 18;
 const MAX_UNIT = 64;
 
-export function BoardView({ board, targets, showValidity, onPlace, lastTurn, scorePopup }: Props) {
+export function BoardView({ board, targets, showValidity, onPlace, lastTurn, scorePopup, arrangement, organizing, onArrange }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const size = useElementSize(wrapRef);
   const [zoom, setZoom] = useState(1);
   const aspect = size.h > 0 ? Math.round((size.w / size.h) * 4) / 4 : 1.4;
-  const layout = useMemo(() => layoutBoard(board, aspect), [board, aspect]);
+  const layout = useMemo(() => layoutBoard(board, aspect, arrangement), [board, aspect, arrangement]);
+
+  /** Próxima direção válida para uma pedra: reto, virar para um lado, virar para o outro. */
+  function cycleDir(tileId: string) {
+    const idx = layout.tiles.findIndex((t) => t.id === tileId);
+    const tile = layout.tiles[idx];
+    if (!tile?.arm || !tile.dir) return;
+    const prev = layout.tiles.slice(0, idx).reverse().find((t) => t.arm === tile.arm);
+    const base: Dir = prev?.dir ?? (tile.arm === 'left' ? 'W' : tile.arm === 'right' ? 'E' : tile.dir);
+    const options: Dir[] = [base, ...PERP[base]];
+    const start = Math.max(0, options.indexOf(tile.dir));
+    for (let k = 1; k <= options.length; k++) {
+      const d = options[(start + k) % options.length]!;
+      if (d === tile.dir) continue;
+      if (!hasCollision(layoutBoard(board, aspect, { ...arrangement, [tileId]: d }))) {
+        onArrange(tileId, d);
+        return;
+      }
+    }
+  }
 
   const vbX = layout.minX - PAD;
   const vbY = layout.minY - PAD;
@@ -66,18 +93,37 @@ export function BoardView({ board, targets, showValidity, onPlace, lastTurn, sco
             role="group"
             aria-label={`Mesa com ${layout.tiles.length} pedra${layout.tiles.length === 1 ? '' : 's'}`}
           >
-            {layout.tiles.map((t) => (
-              <TileShape
-                key={t.id}
-                x={t.x}
-                y={t.y}
-                w={t.w}
-                h={t.h}
-                first={t.first}
-                second={t.second}
-                className={`board-tile ${t.turn === lastTurn ? 'board-tile--last' : ''}`}
-              />
-            ))}
+            {layout.tiles.map((t) =>
+              organizing && t.arm ? (
+                <g
+                  key={t.id}
+                  role="button"
+                  tabIndex={0}
+                  className="board-tile-btn"
+                  aria-label={`Pedra ${t.tile.a} e ${t.tile.b}: tocar para mudar a direção`}
+                  onClick={() => cycleDir(t.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      cycleDir(t.id);
+                    }
+                  }}
+                >
+                  <TileShape x={t.x} y={t.y} w={t.w} h={t.h} first={t.first} second={t.second} className="board-tile board-tile--editable" />
+                </g>
+              ) : (
+                <TileShape
+                  key={t.id}
+                  x={t.x}
+                  y={t.y}
+                  w={t.w}
+                  h={t.h}
+                  first={t.first}
+                  second={t.second}
+                  className={`board-tile ${t.turn === lastTurn ? 'board-tile--last' : ''}`}
+                />
+              ),
+            )}
             {targets &&
               layout.slots
                 .filter((s) => targetByArm.has(s.arm))
@@ -85,18 +131,23 @@ export function BoardView({ board, targets, showValidity, onPlace, lastTurn, sco
                   const target = targetByArm.get(s.arm)!;
                   const cls = showValidity ? (target.valid ? 'slot--valid' : 'slot--invalid') : 'slot--neutral';
                   if (showValidity && !target.valid) return null;
+                  const place = () => onPlace(s.arm, s.primary ? undefined : s.dir);
                   return (
                     <g
-                      key={s.arm}
-                      className={`slot ${cls}`}
+                      key={`${s.arm}-${s.dir ?? 'root'}-${s.primary ? 'p' : 'a'}`}
+                      className={`slot ${cls} ${s.primary ? '' : 'slot--alt'}`}
                       role="button"
                       tabIndex={0}
-                      aria-label={s.arm === 'root' ? 'Abrir a mesa com a pedra selecionada' : `Jogar ${ARM_LABEL[s.arm]} (ponta ${s.value})`}
-                      onClick={() => onPlace(s.arm)}
+                      aria-label={
+                        s.arm === 'root'
+                          ? 'Abrir a mesa com a pedra selecionada'
+                          : `Jogar ${ARM_LABEL[s.arm]} (ponta ${s.value})${s.primary ? '' : `, virando para ${s.dir === 'N' ? 'cima' : s.dir === 'S' ? 'baixo' : s.dir === 'E' ? 'a direita' : 'a esquerda'}`}`
+                      }
+                      onClick={place}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' || e.key === ' ') {
                           e.preventDefault();
-                          onPlace(s.arm);
+                          place();
                         }
                       }}
                     >
@@ -105,7 +156,7 @@ export function BoardView({ board, targets, showValidity, onPlace, lastTurn, sco
                       <rect x={s.x - s.w / 2 + 0.04} y={s.y - s.h / 2 + 0.04} width={s.w - 0.08} height={s.h - 0.08} rx={0.15} className="slot__rect" />
                       {s.value !== null && (
                         <text x={s.x} y={s.y + 0.16} className="slot__label" textAnchor="middle">
-                          {s.value}
+                          {s.primary ? s.value : `${s.value}${s.dir ? ARROW[s.dir] : ''}`}
                         </text>
                       )}
                     </g>

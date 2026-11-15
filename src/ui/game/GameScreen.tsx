@@ -4,6 +4,7 @@ import { canDraw, canPass, drawableCount, legalMoves } from '../../engine/match'
 import { sideOf } from '../../engine/scoring';
 import { hasValue, tileFromId } from '../../engine/tiles';
 import type { ArmId } from '../../engine/board';
+import type { Dir } from '../board/layout';
 import type { GameEvent } from '../../engine/types';
 import { HUMAN_SEAT, useGame } from '../../state/gameStore';
 import { useNav } from '../../state/navigation';
@@ -40,6 +41,11 @@ function lastIndex(events: readonly GameEvent[], pred: (e: GameEvent) => boolean
 export function GameScreen() {
   const match = useGame((s) => s.match);
   const picking = useGame((s) => s.picking);
+  const paused = useGame((s) => s.paused);
+  const arrangement = useGame((s) => s.arrangement);
+  const handOrder = useGame((s) => s.handOrder);
+  const flipped = useGame((s) => s.flipped);
+  const { pause, unpause, setTileDir, resetArrangement, setHandOrder, sortHand, toggleFlip } = useGame.getState();
   const focusMode = useSettings((s) => s.focusMode);
   const setSettings = useSettings((s) => s.set);
   const selectedId = useGame((s) => s.selectedTileId);
@@ -141,13 +147,13 @@ export function GameScreen() {
     select(tileId);
   }
 
-  function onPlace(arm: ArmId | 'root') {
+  function onPlace(arm: ArmId | 'root', dir?: Dir) {
     if (!selectedId) return;
     if (!moves.some((m) => m.tileId === selectedId && m.arm === arm)) {
       toast('Essa pedra não encaixa nessa ponta.');
       return;
     }
-    play(selectedId, arm);
+    play(selectedId, arm, dir);
   }
 
   const canBuy = myTurn && (highlight ? canDraw(match, HUMAN_SEAT) : drawableCount(r, rules) > 0);
@@ -186,6 +192,17 @@ export function GameScreen() {
           <Icon name="menu" />
         </button>
         <Scoreboard match={match} pulseSide={pulseSide} />
+        {match.status === 'playing' && (
+          <button
+            className={`icon-btn ${paused ? 'is-on' : ''}`}
+            onClick={() => (paused ? unpause() : pause())}
+            aria-pressed={paused}
+            aria-label={paused ? 'Continuar o jogo' : 'Pausar para organizar'}
+            title={paused ? 'Continuar' : 'Pausar e organizar'}
+          >
+            <Icon name={paused ? 'play' : 'pause'} />
+          </button>
+        )}
         <button
           className={`icon-btn ${focusMode ? 'is-on' : ''}`}
           onClick={() => setSettings({ focusMode: !focusMode })}
@@ -226,7 +243,19 @@ export function GameScreen() {
             onPlace={onPlace}
             lastTurn={lastPlayEvent && lastPlayEvent.kind === 'play' ? lastPlayEvent.turn : null}
             scorePopup={scorePopup}
+            arrangement={arrangement}
+            organizing={paused}
+            onArrange={(id, d) => {
+              playSound('place');
+              setTileDir(id, d);
+            }}
           />
+          {paused && (
+            <div className="pause-banner" role="status">
+              <strong>Jogo pausado</strong>
+              <span>Toque numa pedra da mesa para mudar a direção. Na sua mão: arraste para mudar de lugar e toque para girar.</span>
+            </div>
+          )}
           {rules.boneyard ? (
             <span className="game__boneyard" aria-label={`Dorme com ${r.boneyard.length} pedras`}>
               Dorme · {r.boneyard.length}
@@ -257,6 +286,17 @@ export function GameScreen() {
         </div>
       </section>
 
+      {paused ? (
+        <section className="pause-tools" aria-label="Organizar">
+          <button className="btn btn--sm" onClick={() => sortHand('numero')}>Ordenar por número</button>
+          <button className="btn btn--sm" onClick={() => sortHand('carrocas')}>Carroças primeiro</button>
+          <button className="btn btn--sm" onClick={() => sortHand('soma')}>Mais pesadas primeiro</button>
+          <button className="btn btn--sm btn--ghost" onClick={resetArrangement}>Mesa automática</button>
+          <button className="btn btn--sm btn--primary" onClick={unpause}>
+            <Icon name="play" size={16} /> Continuar
+          </button>
+        </section>
+      ) : (
       <section className={`game__me ${myTurn ? 'is-active' : ''}`} style={{ ['--side' as string]: sideColor(mySide, rules.teams) }}>
         <div className="game__status">
           {myTurn && <span className="game__turn-dot" aria-hidden />}
@@ -275,10 +315,25 @@ export function GameScreen() {
           )}
         </div>
       </section>
+      )}
 
-      {claimOpen && <ClaimBar onClaim={(p) => claim(p)} onDismiss={() => setClaimHidden(r.turnNumber)} />}
+      {claimOpen && !paused && <ClaimBar onClaim={(p) => claim(p)} onDismiss={() => setClaimHidden(r.turnNumber)} />}
 
-      <HandRack hand={hand} selectedId={selectedId} playableIds={highlight && myTurn ? playable : null} myTurn={myTurn} onTap={onTapTile} />
+      <HandRack
+        hand={hand}
+        order={handOrder}
+        flipped={flipped}
+        selectedId={selectedId}
+        playableIds={highlight && myTurn ? playable : null}
+        myTurn={myTurn}
+        organizing={paused}
+        onTap={onTapTile}
+        onFlip={(id) => {
+          playSound('select');
+          toggleFlip(id);
+        }}
+        onReorder={setHandOrder}
+      />
 
       <p className="sr-only" aria-live="polite">
         {lastAnnouncement}

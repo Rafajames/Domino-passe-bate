@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { decideClaim, decideTurn } from '../ai/bots';
 import type { ArmId } from '../engine/board';
+import type { Dir } from '../ui/board/layout';
 import { applyAction, createMatch, startNextRound } from '../engine/match';
 import { createRng, randomSeed, shuffle } from '../engine/rng';
 import { fullSet, type Tile } from '../engine/tiles';
@@ -20,7 +21,12 @@ const BOT_AVATARS = ['🐆', '🦉', '🐢', '🦊', '🐺', '🦩', '🐬'];
 interface Persisted {
   match: MatchState;
   difficulty: BotDifficulty;
+  arrangement?: Record<string, Dir>;
+  handOrder?: string[];
+  flipped?: string[];
 }
+
+export type HandSort = 'numero' | 'carrocas' | 'soma';
 
 /**
  * Fase "embaralhar e escolher": as 28 pedras viradas na mesa.
@@ -44,10 +50,25 @@ interface GameState {
   difficulty: BotDifficulty;
   selectedTileId: string | null;
   error: string | null;
+  /** Jogo pausado: bots param e o jogador pode arrumar mesa e mão. */
+  paused: boolean;
+  /** Direções escolhidas pelo jogador para pedras da mesa (rodada atual). */
+  arrangement: Record<string, Dir>;
+  /** Ordem manual das pedras na mão. */
+  handOrder: string[];
+  /** Pedras da mão giradas (mostradas de cabeça para baixo). */
+  flipped: string[];
+  pause: () => void;
+  unpause: () => void;
+  setTileDir: (tileId: string, dir: Dir | null) => void;
+  resetArrangement: () => void;
+  setHandOrder: (ids: string[]) => void;
+  sortHand: (mode: HandSort) => void;
+  toggleFlip: (tileId: string) => void;
   /** Sequência de eventos já vistos — a UI anima apenas os novos. */
   startSolo: (profile: RuleProfile, rules: RuleSet, difficulty: BotDifficulty) => void;
   select: (tileId: string | null) => void;
-  play: (tileId: string, arm: ArmId | 'root') => void;
+  play: (tileId: string, arm: ArmId | 'root', dir?: Dir) => void;
   draw: () => void;
   pass: () => void;
   claim: (points: number) => void;
@@ -65,9 +86,16 @@ function clearBotTimer() {
 }
 
 export const useGame = create<GameState>((set, get) => {
+  function persist() {
+    const { match, difficulty, arrangement, handOrder, flipped } = get();
+    if (match) writeJSON(KEYS.activeMatch, { match, difficulty, arrangement, handOrder, flipped } satisfies Persisted);
+  }
+
   function commit(match: MatchState) {
-    set({ match, error: null });
-    writeJSON(KEYS.activeMatch, { match, difficulty: get().difficulty } satisfies Persisted);
+    const prev = get().match;
+    const newRound = !prev || prev.id !== match.id || prev.round.index !== match.round.index;
+    set(newRound ? { match, error: null, arrangement: {}, handOrder: [], flipped: [], paused: false } : { match, error: null });
+    persist();
     if (match.status === 'finished') recordResult(match, get().difficulty);
     scheduleBots();
   }
@@ -75,6 +103,10 @@ export const useGame = create<GameState>((set, get) => {
   function dispatch(action: GameAction) {
     const m = get().match;
     if (!m) return;
+    if (get().paused) {
+      set({ error: 'Jogo pausado. Toque em Continuar para jogar.' });
+      return;
+    }
     try {
       commit(applyAction(m, action));
     } catch (e) {
@@ -86,7 +118,7 @@ export const useGame = create<GameState>((set, get) => {
   function scheduleBots() {
     clearBotTimer();
     const m = get().match;
-    if (!m) return;
+    if (!m || get().paused) return;
 
     // Bots que acabaram de jogar decidem se "cantam" os pontos (modo fiel).
     const pc = m.round.pendingClaim;
@@ -195,9 +227,54 @@ export const useGame = create<GameState>((set, get) => {
       }
       createSolo(profile, rules, difficulty);
     },
+    paused: false,
+    arrangement: {},
+    handOrder: [],
+    flipped: [],
+    pause: () => {
+      clearBotTimer();
+      set({ paused: true, selectedTileId: null });
+    },
+    unpause: () => {
+      set({ paused: false });
+      scheduleBots();
+    },
+    setTileDir: (tileId, dir) => {
+      const next = { ...get().arrangement };
+      if (dir) next[tileId] = dir;
+      else delete next[tileId];
+      set({ arrangement: next });
+      persist();
+    },
+    resetArrangement: () => {
+      set({ arrangement: {} });
+      persist();
+    },
+    setHandOrder: (ids) => {
+      set({ handOrder: ids });
+      persist();
+    },
+    sortHand: (mode) => {
+      const m = get().match;
+      if (!m) return;
+      const hand = [...(m.round.hands[HUMAN_SEAT] ?? [])];
+      const cmp: Record<HandSort, (x: Tile, y: Tile) => number> = {
+        numero: (x, y) => x.a - y.a || x.b - y.b,
+        carrocas: (x, y) => Number(y.a === y.b) - Number(x.a === x.b) || y.a + y.b - (x.a + x.b),
+        soma: (x, y) => y.a + y.b - (x.a + x.b) || y.b - x.b,
+      };
+      set({ handOrder: hand.sort(cmp[mode]).map((t) => t.id) });
+      persist();
+    },
+    toggleFlip: (tileId) => {
+      const f = get().flipped;
+      set({ flipped: f.includes(tileId) ? f.filter((x) => x !== tileId) : [...f, tileId] });
+      persist();
+    },
     select: (tileId) => set({ selectedTileId: tileId }),
-    play: (tileId, arm) => {
+    play: (tileId, arm, dir) => {
       set({ selectedTileId: null });
+      if (dir) set({ arrangement: { ...get().arrangement, [tileId]: dir } });
       dispatch({ type: 'play', seat: HUMAN_SEAT, tileId, arm });
     },
     draw: () => dispatch({ type: 'draw', seat: HUMAN_SEAT }),
@@ -217,7 +294,15 @@ export const useGame = create<GameState>((set, get) => {
     resume: () => {
       const saved = readJSON<Persisted | null>(KEYS.activeMatch, null);
       if (!saved?.match || saved.match.status === 'finished') return false;
-      set({ match: saved.match, difficulty: saved.difficulty, selectedTileId: null });
+      set({
+        match: saved.match,
+        difficulty: saved.difficulty,
+        selectedTileId: null,
+        paused: false,
+        arrangement: saved.arrangement ?? {},
+        handOrder: saved.handOrder ?? [],
+        flipped: saved.flipped ?? [],
+      });
       scheduleBots();
       return true;
     },

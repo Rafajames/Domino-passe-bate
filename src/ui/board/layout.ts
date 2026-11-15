@@ -8,6 +8,11 @@ import { isDouble, type Tile } from '../../engine/tiles';
  */
 type Vec = { x: number; y: number };
 
+/** Direção absoluta em que uma pedra corre na mesa. */
+export type Dir = 'N' | 'S' | 'E' | 'W';
+/** Direções escolhidas pelo jogador para pedras específicas (id da pedra → direção). */
+export type Arrangement = Readonly<Record<string, Dir>>;
+
 export interface LaidTile {
   id: string;
   tile: Tile;
@@ -21,11 +26,18 @@ export interface LaidTile {
   second: number;
   seat: number;
   turn: number;
+  /** Braço e direção (ausentes na pedra inicial). */
+  arm?: ArmId;
+  dir?: Dir;
 }
 
 export interface EndSlot {
   arm: ArmId | 'root';
   value: number | null;
+  /** Direção em que a pedra correria se colocada nesta vaga. */
+  dir?: Dir;
+  /** Vaga sugerida (automática). As demais são alternativas de arrumação. */
+  primary: boolean;
   x: number;
   y: number;
   w: number;
@@ -48,6 +60,9 @@ const S: Vec = { x: 0, y: 1 };
 const add = (a: Vec, b: Vec, k = 1): Vec => ({ x: a.x + b.x * k, y: a.y + b.y * k });
 const neg = (a: Vec): Vec => ({ x: -a.x, y: -a.y });
 const horizontal = (d: Vec) => d.y === 0;
+const DIRS: Record<Dir, Vec> = { N, S, E, W };
+const toDir = (v: Vec): Dir => (v.x > 0 ? 'E' : v.x < 0 ? 'W' : v.y < 0 ? 'N' : 'S');
+const sameVec = (a: Vec, b: Vec) => a.x === b.x && a.y === b.y;
 
 interface Segment {
   dir: Vec;
@@ -64,6 +79,10 @@ interface ArmWalker {
   segIndex: number;
   placedInSeg: number;
   segments: (i: number) => Segment;
+  /** Depois de uma escolha manual, o braço segue em linha reta e só vira no limite. */
+  manual?: boolean;
+  /** Lado preferido para virar no modo manual. */
+  corner: Vec;
 }
 
 function snakeSegments(main: Vec, corner: Vec, bound: number, returnLimit: number, leadVertical?: Vec): (i: number) => Segment {
@@ -100,19 +119,13 @@ function exceeds(seg: Segment, far: Vec, bx: number, by: number): boolean {
   return d.y > 0 ? far.y > by : far.y < -by;
 }
 
-function step(w: ArmWalker, double: boolean, bx: number, by: number): { c: Vec; w: number; h: number; dir: Vec } {
-  let seg = w.segments(w.segIndex);
-  const fixedDone = typeof seg.run === 'number' && w.placedInSeg >= seg.run;
-  const wouldExceed = seg.run === 'limit' && w.placedInSeg > 0 && exceeds(seg, add(w.pos, w.dir, double ? 1 : 2), bx, by);
-  if (fixedDone || wouldExceed) {
-    const prevDir = w.dir;
-    w.segIndex += 1;
-    w.placedInSeg = 0;
-    seg = w.segments(w.segIndex);
-    // Vira: a nova pedra encosta na lateral da metade final da pedra anterior.
-    w.pos = add(add(w.pos, prevDir, -0.5), seg.dir, w.lastHalfWidth);
-    w.dir = seg.dir;
-  }
+function turnTo(w: ArmWalker, dir: Vec) {
+  // Vira: a nova pedra encosta na lateral da metade final da pedra anterior.
+  w.pos = add(add(w.pos, w.dir, -0.5), dir, w.lastHalfWidth);
+  w.dir = dir;
+}
+
+function place(w: ArmWalker, double: boolean): { c: Vec; w: number; h: number; dir: Vec } {
   const r = rectFor(w.pos, w.dir, double);
   w.pos = add(w.pos, w.dir, r.len);
   w.lastHalfWidth = double ? 1 : 0.5;
@@ -120,17 +133,51 @@ function step(w: ArmWalker, double: boolean, bx: number, by: number): { c: Vec; 
   return { c: r.c, w: r.w, h: r.h, dir: w.dir };
 }
 
+/** Coloca a pedra seguindo uma direção escolhida pelo jogador. */
+function stepForced(w: ArmWalker, double: boolean, dir: Vec): { c: Vec; w: number; h: number; dir: Vec } {
+  if (!sameVec(dir, w.dir) && !sameVec(dir, neg(w.dir))) {
+    turnTo(w, dir);
+    w.placedInSeg = 0;
+  }
+  w.manual = true;
+  return place(w, double);
+}
+
+function step(w: ArmWalker, double: boolean, bx: number, by: number): { c: Vec; w: number; h: number; dir: Vec } {
+  if (w.manual) {
+    // Segue reto; ao passar do limite, vira para o lado preferido do braço.
+    const far = add(w.pos, w.dir, double ? 1 : 2);
+    const out = horizontal(w.dir) ? Math.abs(far.x) > bx : Math.abs(far.y) > by;
+    if (out && w.placedInSeg > 0) {
+      const turn = horizontal(w.dir) ? (horizontal(w.corner) ? S : w.corner) : !horizontal(w.corner) ? (w.pos.x > 0 ? W : E) : w.corner;
+      turnTo(w, turn);
+      w.placedInSeg = 0;
+    }
+    return place(w, double);
+  }
+  let seg = w.segments(w.segIndex);
+  const fixedDone = typeof seg.run === 'number' && w.placedInSeg >= seg.run;
+  const wouldExceed = seg.run === 'limit' && w.placedInSeg > 0 && exceeds(seg, add(w.pos, w.dir, double ? 1 : 2), bx, by);
+  if (fixedDone || wouldExceed) {
+    w.segIndex += 1;
+    w.placedInSeg = 0;
+    seg = w.segments(w.segIndex);
+    turnTo(w, seg.dir);
+  }
+  return place(w, double);
+}
+
 /** Metade "primeira" (cima/esquerda) e "segunda" (baixo/direita) conforme a direção. */
 function halves(dir: Vec, inner: number, outer: number): [number, number] {
   return dir.x > 0 || dir.y > 0 ? [inner, outer] : [outer, inner];
 }
 
-function layoutOnce(board: BoardState, bx: number, by: number): BoardLayout {
+function layoutOnce(board: BoardState, bx: number, by: number, arrangement: Arrangement): BoardLayout {
   const tiles: LaidTile[] = [];
   const slots: EndSlot[] = [];
   const root = board.root;
   if (!root) {
-    return { tiles, slots: [{ arm: 'root', value: null, x: 0, y: 0, w: 2, h: 1 }], minX: -2, minY: -1.5, maxX: 2, maxY: 1.5 };
+    return { tiles, slots: [{ arm: 'root', value: null, x: 0, y: 0, w: 2, h: 1, primary: true }], minX: -2, minY: -1.5, maxX: 2, maxY: 1.5 };
   }
   const hasSpinner = !!board.spinner;
   // Com spinner, as fileiras de retorno param antes do centro para não cruzar os braços verticais.
@@ -150,8 +197,8 @@ function layoutOnce(board: BoardState, bx: number, by: number): BoardLayout {
   });
   const rootHalf = rootDouble ? 0.5 : 1;
   const walkers: Partial<Record<ArmId, ArmWalker>> = {
-    left: { pos: { x: -rootHalf, y: 0 }, dir: W, lastHalfWidth: rootDouble ? 1 : 0.5, segIndex: 0, placedInSeg: 0, segments: snakeSegments(W, N, bx, ret) },
-    right: { pos: { x: rootHalf, y: 0 }, dir: E, lastHalfWidth: rootDouble ? 1 : 0.5, segIndex: 0, placedInSeg: 0, segments: snakeSegments(E, S, bx, ret) },
+    left: { pos: { x: -rootHalf, y: 0 }, dir: W, lastHalfWidth: rootDouble ? 1 : 0.5, segIndex: 0, placedInSeg: 0, segments: snakeSegments(W, N, bx, ret), corner: N },
+    right: { pos: { x: rootHalf, y: 0 }, dir: E, lastHalfWidth: rootDouble ? 1 : 0.5, segIndex: 0, placedInSeg: 0, segments: snakeSegments(E, S, bx, ret), corner: S },
   };
 
   let spinnerCenter: Vec | null = null;
@@ -162,9 +209,10 @@ function layoutOnce(board: BoardState, bx: number, by: number): BoardLayout {
     const wk = walkers[arm]!;
     board.arms[arm].forEach((p, index) => {
       const dbl = isDouble(p.tile);
-      const r = step(wk, dbl, bx, by);
+      const forced = arrangement[p.tile.id];
+      const r = forced ? stepForced(wk, dbl, DIRS[forced]) : step(wk, dbl, bx, by);
       const [first, second] = halves(r.dir, p.inner, p.outer);
-      tiles.push({ id: p.tile.id, tile: p.tile, x: r.c.x, y: r.c.y, w: r.w, h: r.h, first, second, seat: p.seat, turn: p.turn });
+      tiles.push({ id: p.tile.id, tile: p.tile, x: r.c.x, y: r.c.y, w: r.w, h: r.h, first, second, seat: p.seat, turn: p.turn, arm, dir: toDir(r.dir) });
       if (board.spinner && board.spinner.arm === arm && board.spinner.index === index) {
         spinnerCenter = r.c;
         spinnerDir = r.dir;
@@ -185,15 +233,17 @@ function layoutOnce(board: BoardState, bx: number, by: number): BoardLayout {
       segIndex: 0,
       placedInSeg: 0,
       segments: snakeSegments(main, corner, bx, bx, dir),
+      corner: main,
     });
     walkers.up = mk(upDir, upDir, horizontal(upDir) ? N : E);
     walkers.down = mk(downDir, downDir, horizontal(downDir) ? S : W);
     for (const arm of ['up', 'down'] as const) {
       const wk = walkers[arm]!;
       for (const p of board.arms[arm]) {
-        const r = step(wk, isDouble(p.tile), bx, by);
+        const forced = arrangement[p.tile.id];
+        const r = forced ? stepForced(wk, isDouble(p.tile), DIRS[forced]) : step(wk, isDouble(p.tile), bx, by);
         const [first, second] = halves(r.dir, p.inner, p.outer);
-        tiles.push({ id: p.tile.id, tile: p.tile, x: r.c.x, y: r.c.y, w: r.w, h: r.h, first, second, seat: p.seat, turn: p.turn });
+        tiles.push({ id: p.tile.id, tile: p.tile, x: r.c.x, y: r.c.y, w: r.w, h: r.h, first, second, seat: p.seat, turn: p.turn, arm, dir: toDir(r.dir) });
       }
     }
   }
@@ -204,7 +254,7 @@ function layoutOnce(board: BoardState, bx: number, by: number): BoardLayout {
     if (!wk) continue;
     const probe: ArmWalker = { ...wk, pos: { ...wk.pos }, dir: { ...wk.dir } };
     const r = step(probe, false, bx, by);
-    slots.push({ arm: end.arm, value: end.value, x: r.c.x, y: r.c.y, w: r.w, h: r.h });
+    slots.push({ arm: end.arm, value: end.value, dir: toDir(r.dir), primary: true, x: r.c.x, y: r.c.y, w: r.w, h: r.h });
   }
 
   let minX = Infinity;
@@ -217,7 +267,29 @@ function layoutOnce(board: BoardState, bx: number, by: number): BoardLayout {
     minY = Math.min(minY, r.y - r.h / 2);
     maxY = Math.max(maxY, r.y + r.h / 2);
   }
-  return { tiles, slots, minX, minY, maxX, maxY };
+  return { tiles, slots, minX, minY, maxX, maxY, walkers } as BoardLayout & { walkers: typeof walkers };
+}
+
+/**
+ * Vagas alternativas: seguir reto ou virar para qualquer lado, desde que a
+ * pedra caiba sem encostar em outra. Permite ao jogador arrumar a mesa do seu jeito.
+ */
+function alternativeSlots(layout: BoardLayout & { walkers?: Partial<Record<ArmId, ArmWalker>> }, board: BoardState): EndSlot[] {
+  const out: EndSlot[] = [];
+  const taken = [...layout.tiles, ...layout.slots];
+  for (const end of openEnds(board)) {
+    const wk = layout.walkers?.[end.arm];
+    if (!wk) continue;
+    for (const d of [wk.dir, ...(horizontal(wk.dir) ? [N, S] : [E, W])]) {
+      const probe: ArmWalker = { ...wk, pos: { ...wk.pos }, dir: { ...wk.dir } };
+      const r = stepForced(probe, false, d);
+      const slot: EndSlot = { arm: end.arm, value: end.value, dir: toDir(d), primary: false, x: r.c.x, y: r.c.y, w: r.w, h: r.h };
+      if (taken.some((t) => overlaps(t as LaidTile, slot))) continue;
+      out.push(slot);
+      taken.push(slot);
+    }
+  }
+  return out;
 }
 
 /** Colisão entre pedras e, opcionalmente, entre vagas (pontas) e o resto. */
@@ -232,15 +304,24 @@ export function hasCollision(layout: BoardLayout, includeSlots = false): boolean
  * Calcula o layout respeitando a proporção da área visível. Se houver colisão,
  * amplia os limites e tenta de novo (a mesa encolhe ou ganha rolagem).
  */
-export function layoutBoard(board: BoardState, aspect: number): BoardLayout {
+export function layoutBoard(board: BoardState, aspect: number, arrangement: Arrangement = {}): BoardLayout {
   // Retrato: fileiras curtas e mais fileiras (pedras maiores). Paisagem: fileiras longas.
   let bx = Math.max(3, 3.5 * aspect);
   let by = Math.max(3.5, bx / Math.max(aspect, 0.1));
-  let layout = layoutOnce(board, bx, by);
+  let layout = layoutOnce(board, bx, by, arrangement);
   for (let i = 0; i < 10 && hasCollision(layout, true); i++) {
     bx += 2;
     by += 1.5;
-    layout = layoutOnce(board, bx, by);
+    layout = layoutOnce(board, bx, by, arrangement);
   }
-  return layout;
+  const alternatives = alternativeSlots(layout, board);
+  const slots = [...layout.slots, ...alternatives];
+  let { minX, minY, maxX, maxY } = layout;
+  for (const r of alternatives) {
+    minX = Math.min(minX, r.x - r.w / 2);
+    maxX = Math.max(maxX, r.x + r.w / 2);
+    minY = Math.min(minY, r.y - r.h / 2);
+    maxY = Math.max(maxY, r.y + r.h / 2);
+  }
+  return { tiles: layout.tiles, slots, minX, minY, maxX, maxY };
 }
