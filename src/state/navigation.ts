@@ -9,7 +9,7 @@ export type Screen =
   | { name: 'setup'; profileId: string }
   | { name: 'game' }
   | { name: 'player' }
-  | { name: 'online' }
+  | { name: 'online'; code?: string }
   | { name: 'howto' }
   | { name: 'replay'; round?: number };
 

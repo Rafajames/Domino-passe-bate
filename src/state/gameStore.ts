@@ -54,8 +54,29 @@ export interface PickingState {
   pending: { kind: 'new'; profile: RuleProfile; rules: RuleSet; difficulty: BotDifficulty; extraHumans?: LocalHuman[] } | { kind: 'next' };
 }
 
+/** Ganchos de rede definidos pelo store online (anfitrião ou convidado). */
+export const netHooks: {
+  /** Convidado: envia a ação ao anfitrião em vez de aplicar localmente. */
+  sendAction?: (action: GameAction) => void;
+  sendNextRound?: () => void;
+  /** Anfitrião: transmite o estado novo a cada convidado. */
+  broadcast?: (match: MatchState) => void;
+} = {};
+
+export type NetRole = 'local' | 'host' | 'guest';
+
 interface GameState {
   match: MatchState | null;
+  /** 'local' (solo/passar o celular), 'host' (sala online) ou 'guest' (convidado). */
+  net: NetRole;
+  startOnline: (profile: RuleProfile, rules: RuleSet, difficulty: BotDifficulty, remotes: { seat: number; name: string; avatar: string }[]) => void;
+  /** Anfitrião: aplica uma ação vinda de um convidado. Retorna mensagem de erro, se houver. */
+  applyRemote: (seat: number, action: GameAction) => string | null;
+  /** Anfitrião: um bot assume o lugar de quem caiu. */
+  replaceWithBot: (seat: number) => void;
+  /** Convidado: recebe o estado do anfitrião. */
+  receiveState: (match: MatchState, seat: number) => void;
+  leaveOnline: () => void;
   picking: PickingState | null;
   shuffleTable: () => void;
   togglePick: (tileId: string) => void;
@@ -106,7 +127,8 @@ function clearBotTimer() {
 
 export const useGame = create<GameState>((set, get) => {
   function persist() {
-    const { match, difficulty, arrangement, handOrder, flipped, viewSeat } = get();
+    const { match, difficulty, arrangement, handOrder, flipped, viewSeat, net } = get();
+    if (net !== 'local') return; // partidas online não são retomadas como solo
     if (match) writeJSON(KEYS.activeMatch, { match, difficulty, arrangement, handOrder, flipped, viewSeat } satisfies Persisted);
   }
 
@@ -127,8 +149,9 @@ export const useGame = create<GameState>((set, get) => {
     set(newRound ? { match, error: null, arrangement: {}, handOrder: [], flipped: [], paused: false } : { match, error: null });
     updateHandoff(match);
     persist();
+    if (get().net === 'host') netHooks.broadcast?.(match);
     // A cada fim de rodada, guarda o jogo para a revisão ("último jogo").
-    if (match.status !== 'playing') writeJSON(KEYS.lastGame, buildGameRecord(match));
+    if (match.status !== 'playing' && get().net !== 'guest') writeJSON(KEYS.lastGame, buildGameRecord(match));
     if (match.status === 'finished' && localHumanSeats(match).length === 1) recordResult(match, get().difficulty);
     scheduleBots();
   }
@@ -136,6 +159,10 @@ export const useGame = create<GameState>((set, get) => {
   function dispatch(action: GameAction) {
     const m = get().match;
     if (!m) return;
+    if (get().net === 'guest') {
+      netHooks.sendAction?.(action);
+      return;
+    }
     if (get().paused) {
       set({ error: 'Jogo pausado. Toque em Continuar para jogar.' });
       return;
@@ -151,7 +178,7 @@ export const useGame = create<GameState>((set, get) => {
   function scheduleBots() {
     clearBotTimer();
     const m = get().match;
-    if (!m || get().paused) return;
+    if (!m || get().paused || get().net === 'guest') return;
 
     // Bots que acabaram de jogar decidem se "cantam" os pontos (modo fiel).
     const pc = m.round.pendingClaim;
@@ -217,6 +244,58 @@ export const useGame = create<GameState>((set, get) => {
 
   return {
     match: null,
+    net: 'local',
+    startOnline: (profile, rules, difficulty, remotes) => {
+      clearBotTimer();
+      botRng = createRng(randomSeed());
+      const frozen = freezeRules(profile, { ...rules, dealMode: 'auto' });
+      const me = usePlayer.getState().player;
+      const names = [...BOT_NAMES].sort(() => botRng() - 0.5);
+      const players: PlayerSlot[] = Array.from({ length: frozen.rules.players }, (_, seat) => {
+        if (seat === HUMAN_SEAT) return { seat, name: me.name, kind: 'human' as const, avatar: me.avatar };
+        const r = remotes.find((x) => x.seat === seat);
+        if (r) return { seat, name: r.name, kind: 'remote' as const, avatar: r.avatar };
+        return { seat, name: names[seat] ?? `Bot ${seat}`, kind: 'bot' as const, difficulty, avatar: BOT_AVATARS[seat % BOT_AVATARS.length] ?? '🎲' };
+      });
+      const match = createMatch({ id: `online-${Date.now().toString(36)}`, frozen, players, seed: randomSeed() });
+      set({ net: 'host', difficulty, selectedTileId: null, picking: null, viewSeat: HUMAN_SEAT, handoff: null });
+      commit(match);
+    },
+    applyRemote: (seat, action) => {
+      const m = get().match;
+      if (!m || get().net !== 'host') return 'Partida indisponível.';
+      if (action.seat !== seat) return 'Ação de outro jogador.';
+      if (get().paused) return 'Jogo pausado pelo anfitrião.';
+      try {
+        commit(applyAction(m, action));
+        return null;
+      } catch (e) {
+        return e instanceof Error ? e.message : String(e);
+      }
+    },
+    replaceWithBot: (seat) => {
+      const m = get().match;
+      if (!m) return;
+      const players = m.players.map((p) => (p.seat === seat ? { ...p, kind: 'bot' as const, difficulty: get().difficulty, name: `${p.name} (bot)` } : p));
+      commit({ ...m, players });
+    },
+    receiveState: (match, seat) => {
+      const prev = get().match;
+      const newRound = !prev || prev.id !== match.id || prev.round.index !== match.round.index;
+      set({
+        net: 'guest',
+        match,
+        viewSeat: seat,
+        handoff: null,
+        picking: null,
+        error: null,
+        ...(newRound ? { arrangement: {}, handOrder: [], flipped: [], selectedTileId: null } : {}),
+      });
+    },
+    leaveOnline: () => {
+      clearBotTimer();
+      set({ net: 'local', match: null, picking: null, handoff: null, viewSeat: HUMAN_SEAT, paused: false });
+    },
     picking: null,
     shuffleTable: () => {
       const p = get().picking;
@@ -255,6 +334,7 @@ export const useGame = create<GameState>((set, get) => {
 
     startSolo: (profile, rules, difficulty, extraHumans = []) => {
       clearBotTimer();
+      set({ net: 'local' });
       botRng = createRng(randomSeed());
       set({ viewSeat: HUMAN_SEAT, handoff: null });
       if (rules.dealMode === 'pick') {
@@ -329,6 +409,10 @@ export const useGame = create<GameState>((set, get) => {
     nextRound: () => {
       const m = get().match;
       if (m?.status !== 'round-over') return;
+      if (get().net === 'guest') {
+        netHooks.sendNextRound?.();
+        return;
+      }
       if (m.frozen.rules.dealMode === 'pick') beginPicking(m.frozen.rules, { kind: 'next' }, m.handSizes);
       else commit(startNextRound(m));
     },
@@ -338,6 +422,7 @@ export const useGame = create<GameState>((set, get) => {
       set({ match: null, selectedTileId: null, picking: null, handoff: null, viewSeat: HUMAN_SEAT });
     },
     resume: () => {
+      set({ net: 'local' });
       const saved = readJSON<Persisted | null>(KEYS.activeMatch, null);
       if (!saved?.match || saved.match.status === 'finished') return false;
       set({

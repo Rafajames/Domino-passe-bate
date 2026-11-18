@@ -46,6 +46,15 @@ export function App() {
     window.scrollTo(0, 0);
   }, [screen]);
 
+  // Link de convite: ?sala=CODIGO abre direto a tela de entrar na sala.
+  useEffect(() => {
+    const code = new URLSearchParams(location.search).get('sala');
+    if (code && /^[A-Z0-9]{6}$/i.test(code)) {
+      history.replaceState(null, '', location.pathname);
+      useNav.getState().go({ name: 'online', code: code.toUpperCase() });
+    }
+  }, []);
+
   let content;
   switch (screen.name) {
     case 'home': content = <HomeScreen />; break;
@@ -55,7 +64,7 @@ export function App() {
     case 'setup': content = <SetupScreen profileId={screen.profileId} />; break;
     case 'game': content = <GameScreen />; break;
     case 'player': content = <PlayerScreen />; break;
-    case 'online': content = <OnlineScreen />; break;
+    case 'online': content = <OnlineScreen code={screen.code} />; break;
     case 'howto': content = <HowToScreen />; break;
     case 'replay': content = <ReplayScreen initialRound={screen.round} />; break;
   }

@@ -75,7 +75,8 @@ export interface RoundState {
 export interface PlayerSlot {
   readonly seat: number;
   readonly name: string;
-  readonly kind: 'human' | 'bot';
+  /** 'remote': pessoa jogando online em outro aparelho. */
+  readonly kind: 'human' | 'bot' | 'remote';
   readonly difficulty?: BotDifficulty;
   readonly avatar: string;
 }

@@ -59,9 +59,8 @@ export function HomeScreen() {
             <Icon name="globe" />
             <span className="list__main">
               <span className="list__label">Jogar online</span>
-              <span className="list__hint">Salas, convites, ranking e torneios</span>
+              <span className="list__hint">Crie uma sala e chame os amigos pelo link ou código</span>
             </span>
-            <span className="badge badge--soon">Em breve</span>
           </button>
           {lastGame && (
             <button className="list__item" onClick={() => go({ name: 'replay' })}>

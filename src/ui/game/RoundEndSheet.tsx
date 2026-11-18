@@ -6,7 +6,7 @@ import { sideColor } from './colors';
 import { resultDetail, resultTitle, sideName } from './text';
 import { Sheet } from './Sheet';
 
-export function RoundEndSheet({ match, viewSeat: HUMAN_SEAT, onNext, onExit, onRematch, onReview }: { match: MatchState; viewSeat: number; onNext: () => void; onExit: () => void; onRematch: () => void; onReview: () => void }) {
+export function RoundEndSheet({ match, viewSeat: HUMAN_SEAT, net = 'local', onNext, onExit, onRematch, onReview }: { match: MatchState; viewSeat: number; net?: 'local' | 'host' | 'guest'; onNext: () => void; onExit: () => void; onRematch: () => void; onReview: () => void }) {
   const rules = match.frozen.rules;
   const finished = match.status === 'finished';
   const r = match.round.result;
@@ -66,13 +66,19 @@ export function RoundEndSheet({ match, viewSeat: HUMAN_SEAT, onNext, onExit, onR
         )}
 
         <div className="round-end__actions">
-          <button className="btn btn--block btn--ghost" onClick={onReview}>
-            Revisar {finished ? 'o jogo' : 'a rodada'} jogada por jogada
-          </button>
+          {net !== 'guest' && (
+            <button className="btn btn--block btn--ghost" onClick={onReview}>
+              Revisar {finished ? 'o jogo' : 'a rodada'} jogada por jogada
+            </button>
+          )}
           {finished ? (
             <>
-              <button className="btn btn--primary btn--block" onClick={onRematch}>Jogar de novo</button>
-              <button className="btn btn--block" onClick={onExit}>Menu inicial</button>
+              {net !== 'guest' ? (
+                <button className="btn btn--primary btn--block" onClick={onRematch}>Jogar de novo</button>
+              ) : (
+                <p className="muted" style={{ textAlign: 'center' }}>Aguardando o anfitrião começar outra partida…</p>
+              )}
+              <button className="btn btn--block" onClick={onExit}>{net === 'local' ? 'Menu inicial' : 'Sair da sala'}</button>
             </>
           ) : (
             <button className="btn btn--primary btn--block" onClick={onNext} autoFocus>

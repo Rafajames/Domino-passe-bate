@@ -8,6 +8,8 @@ import type { Dir } from '../board/layout';
 import type { GameEvent } from '../../engine/types';
 import { useGame } from '../../state/gameStore';
 import { HandoffCover } from './HandoffCover';
+import { ChatSheet } from './ChatSheet';
+import { useOnline } from '../../state/onlineStore';
 import { useNav } from '../../state/navigation';
 import { useProfiles } from '../../state/profilesStore';
 import { useSettings } from '../../state/settingsStore';
@@ -45,6 +47,11 @@ export function GameScreen() {
   const paused = useGame((s) => s.paused);
   const HUMAN_SEAT = useGame((s) => s.viewSeat);
   const handoff = useGame((s) => s.handoff);
+  const net = useGame((s) => s.net);
+  const unread = useOnline((s) => s.unread);
+  const lobbySeats = useOnline((s) => s.lobby?.seats);
+  const onlineStatus = useOnline((s) => s.status);
+  const [chatOpen, setChatOpen] = useState(false);
   const arrangement = useGame((s) => s.arrangement);
   const handOrder = useGame((s) => s.handOrder);
   const flipped = useGame((s) => s.flipped);
@@ -202,7 +209,12 @@ export function GameScreen() {
           <Icon name="menu" />
         </button>
         <Scoreboard match={match} pulseSide={pulseSide} />
-        {match.status === 'playing' && (
+        {net !== 'local' && (
+          <button className="icon-btn icon-badge" data-count={unread || undefined} onClick={() => setChatOpen(true)} aria-label={`Conversa da mesa${unread ? `, ${unread} novas` : ''}`}>
+            <Icon name="chat" />
+          </button>
+        )}
+        {match.status === 'playing' && net !== 'guest' && (
           <button
             className={`icon-btn ${paused ? 'is-on' : ''}`}
             onClick={() => (paused ? unpause() : pause())}
@@ -234,7 +246,7 @@ export function GameScreen() {
           return (
             <div key={seat} className={`game__seat game__seat--${pos}`}>
               <Seat
-                player={player}
+                player={lobbySeats?.find((x) => x.seat === seat && x.kind === 'guest' && !x.connected) ? { ...player, name: `${player.name} (desconectado)` } : player}
                 position={pos}
                 count={r.hands[seat]?.length ?? 0}
                 active={match.status === 'playing' && r.turn === seat}
@@ -349,12 +361,20 @@ export function GameScreen() {
         {lastAnnouncement}
       </p>
 
+      {net === 'guest' && onlineStatus === 'reconnecting' && (
+        <div className="toast" role="status">Conexão com o anfitrião perdida. Reconectando…</div>
+      )}
+      {chatOpen && <ChatSheet onClose={() => setChatOpen(false)} />}
       {menuOpen && (
         <GameMenu
           match={match}
+          net={net}
+          disconnected={net === 'host' ? (lobbySeats ?? []).filter((x) => x.kind === 'guest' && !x.connected).map((x) => ({ seat: x.seat, name: x.name })) : []}
+          onBot={(seat) => useOnline.getState().botForSeat(seat)}
           onClose={() => setMenuOpen(false)}
           onQuit={() => {
-            quit();
+            if (net !== 'local') useOnline.getState().leave();
+            else quit();
             reset();
           }}
         />
@@ -364,13 +384,19 @@ export function GameScreen() {
         <RoundEndSheet
           match={match}
           viewSeat={HUMAN_SEAT}
+          net={net}
           onNext={nextRound}
           onExit={() => {
-            quit();
+            if (net !== 'local') useOnline.getState().leave();
+            else quit();
             reset();
           }}
           onReview={() => go({ name: 'replay', round: match.round.index })}
           onRematch={() => {
+            if (net === 'host') {
+              useOnline.getState().startGame();
+              return;
+            }
             const p = getProfile(match.frozen.profileId);
             if (p) startSolo(p, { ...match.frozen.rules, assists: { ...match.frozen.rules.assists } }, difficulty);
             else {
