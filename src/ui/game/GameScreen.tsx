@@ -27,8 +27,13 @@ import { Scoreboard } from './Scoreboard';
 import { Seat, type SeatPosition } from './Seat';
 import { eventText, tileName } from './text';
 import { useGameSounds } from './useGameSounds';
+import { decideTurnAsync } from '../../ai/async';
+import { playerView } from '../../engine/view';
+import { createRng, randomSeed } from '../../engine/rng';
 import { playSound } from '../../services/sound';
 import './game.css';
+
+const ARM_HINT = { left: 'na ponta esquerda', right: 'na ponta direita', up: 'em cima do spinner', down: 'embaixo do spinner' } as const;
 
 const POSITIONS: Record<number, SeatPosition[]> = {
   2: ['top'],
@@ -52,6 +57,7 @@ export function GameScreen() {
   const lobbySeats = useOnline((s) => s.lobby?.seats);
   const onlineStatus = useOnline((s) => s.status);
   const [chatOpen, setChatOpen] = useState(false);
+  const [hintBusy, setHintBusy] = useState(false);
   const arrangement = useGame((s) => s.arrangement);
   const handOrder = useGame((s) => s.handOrder);
   const flipped = useGame((s) => s.flipped);
@@ -325,6 +331,23 @@ export function GameScreen() {
           <span>{statusText}</span>
         </div>
         <div className="game__actions">
+          {myTurn && highlight && net === 'local' && moves.length > 1 && (
+            <button
+              className="btn btn--sm btn--ghost"
+              disabled={hintBusy}
+              onClick={async () => {
+                setHintBusy(true);
+                const action = await decideTurnAsync(playerView(match, HUMAN_SEAT), 'mestre', createRng(randomSeed()));
+                setHintBusy(false);
+                if (action.type !== 'play') return;
+                select(action.tileId);
+                const [a, b] = action.tileId.split('-');
+                toast(`Dica do Mestre: jogue a ${a === b ? `carroça de ${a}` : `${a} e ${b}`} ${action.arm === 'root' ? 'para abrir' : ARM_HINT[action.arm]}.`);
+              }}
+            >
+              {hintBusy ? 'Pensando…' : 'Dica'}
+            </button>
+          )}
           {canBuy && (
             <button className="btn btn--sm btn--primary" onClick={draw}>
               Comprar

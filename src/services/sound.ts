@@ -8,6 +8,21 @@ let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
 let enabled = true;
 let volume = 0.7;
+let hapticsOn = true;
+
+/** Vibração curta (Android). Ignorada onde não existe. */
+export function haptic(pattern: number | number[]): void {
+  if (!hapticsOn) return;
+  try {
+    navigator.vibrate?.(pattern);
+  } catch {
+    /* sem suporte */
+  }
+}
+
+export function configureHaptics(on: boolean): void {
+  hapticsOn = on;
+}
 
 function getCtx(): AudioContext | null {
   if (typeof window === 'undefined') return null;

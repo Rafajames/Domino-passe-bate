@@ -117,6 +117,13 @@ export function PlayerScreen() {
             )}
             <div className="rule-row rule-row--inline">
               <span className="list__main">
+                <span className="rule-row__label">Vibração</span>
+                <span className="rule-row__hint">Ao chegar a sua vez, ao pontuar e no fim da rodada (Android).</span>
+              </span>
+              <Switch label="Vibração" checked={settings.haptics} onChange={(haptics) => settings.set({ haptics })} />
+            </div>
+            <div className="rule-row rule-row--inline">
+              <span className="list__main">
                 <span className="rule-row__label">Reduzir animações</span>
                 <span className="rule-row__hint">Também segue a configuração do sistema.</span>
               </span>

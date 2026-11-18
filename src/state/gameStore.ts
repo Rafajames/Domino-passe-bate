@@ -1,9 +1,10 @@
 import { create } from 'zustand';
-import { decideClaim, decideTurn } from '../ai/bots';
+import { decideClaim } from '../ai/bots';
+import { decideTurnAsync } from '../ai/async';
 import type { ArmId } from '../engine/board';
 import type { Dir } from '../ui/board/layout';
 import { applyAction, createMatch, startNextRound } from '../engine/match';
-import { buildGameRecord } from '../engine/replay';
+import { buildGameRecord, type GameRecord } from '../engine/replay';
 import { createRng, randomSeed, shuffle } from '../engine/rng';
 import { fullSet, type Tile } from '../engine/tiles';
 import { freezeRules } from '../engine/rules/freeze';
@@ -120,9 +121,12 @@ interface GameState {
 let botTimer: ReturnType<typeof setTimeout> | null = null;
 let botRng = createRng(randomSeed());
 
+let botToken = 0;
+
 function clearBotTimer() {
   if (botTimer) clearTimeout(botTimer);
   botTimer = null;
+  botToken++;
 }
 
 export const useGame = create<GameState>((set, get) => {
@@ -151,7 +155,11 @@ export const useGame = create<GameState>((set, get) => {
     persist();
     if (get().net === 'host') netHooks.broadcast?.(match);
     // A cada fim de rodada, guarda o jogo para a revisão ("último jogo").
-    if (match.status !== 'playing' && get().net !== 'guest') writeJSON(KEYS.lastGame, buildGameRecord(match));
+    if (match.status !== 'playing' && get().net !== 'guest') {
+      const prevRecord = readJSON<GameRecord | null>(KEYS.lastGame, null);
+      const arrangements = { ...(prevRecord?.id === match.id ? prevRecord.arrangements : {}), [match.round.index]: get().arrangement };
+      writeJSON(KEYS.lastGame, { ...buildGameRecord(match), arrangements });
+    }
     if (match.status === 'finished' && localHumanSeats(match).length === 1) recordResult(match, get().difficulty);
     scheduleBots();
   }
@@ -197,10 +205,16 @@ export const useGame = create<GameState>((set, get) => {
     if (!slot || slot.kind !== 'bot') return;
     const humanClaimOpen = !!pc && m.players[pc.seat]?.kind === 'human';
     const view = playerView(m, seat);
-    const action = decideTurn(view, slot.difficulty ?? 'normal', botRng);
-    const base = action.type === 'draw' ? 500 : action.type === 'pass' ? 1000 : 850;
-    const delay = base + Math.floor(botRng() * 350) + (humanClaimOpen ? 2200 : 0);
-    botTimer = setTimeout(() => dispatch(action), delay);
+    const started = Date.now();
+    const token = ++botToken;
+    void decideTurnAsync(view, slot.difficulty ?? 'normal', botRng).then((action) => {
+      // Descarta a decisão se o estado mudou enquanto o bot pensava (pausa, saída etc.).
+      const now = get().match;
+      if (token !== botToken || !now || now !== m || get().paused) return;
+      const base = action.type === 'draw' ? 500 : action.type === 'pass' ? 1000 : 850;
+      const wanted = base + Math.floor(botRng() * 350) + (humanClaimOpen ? 2200 : 0);
+      botTimer = setTimeout(() => dispatch(action), Math.max(0, wanted - (Date.now() - started)));
+    });
   }
 
   function beginPicking(rules: RuleSet, pending: PickingState['pending'], sizes?: readonly number[]) {

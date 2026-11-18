@@ -17,6 +17,8 @@ export interface GameRecord {
   status: MatchState['status'];
   winnerSide: number | null;
   savedAt: string;
+  /** Arrumação da mesa feita pelo jogador, por rodada (id da pedra → direção). */
+  arrangements?: Record<number, Record<string, 'N' | 'S' | 'E' | 'W'>>;
 }
 
 export interface ReplayStep {

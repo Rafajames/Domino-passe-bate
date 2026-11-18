@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { sideOf } from '../../engine/scoring';
 import type { MatchState } from '../../engine/types';
-import { playSound } from '../../services/sound';
+import { haptic, playSound } from '../../services/sound';
 
 /** Toca os sons correspondentes aos eventos novos da partida. */
 export function useGameSounds(match: MatchState | null, HUMAN_SEAT: number): void {
@@ -22,6 +22,7 @@ export function useGameSounds(match: MatchState | null, HUMAN_SEAT: number): voi
       if (name) {
         const d = delay;
         setTimeout(() => playSound(name), d);
+        if (e.kind === 'score' && e.seat === HUMAN_SEAT) setTimeout(() => haptic([40, 60, 40]), d);
         delay += 120;
       }
     }
@@ -29,9 +30,15 @@ export function useGameSounds(match: MatchState | null, HUMAN_SEAT: number): voi
       const mySide = sideOf(HUMAN_SEAT, match.frozen.rules);
       const won = match.frozen.rules.mode === 'burrinha' ? !(match.loserSeats ?? []).includes(HUMAN_SEAT) : match.winnerSide === mySide;
       const sound = match.status === 'finished' ? (won ? 'win' : 'lose') : 'round';
-      setTimeout(() => playSound(sound), delay + 350);
+      setTimeout(() => {
+        playSound(sound);
+        haptic(sound === 'win' ? [60, 80, 60, 80, 120] : 120);
+      }, delay + 350);
     } else if (fresh.length && match.status === 'playing' && r.turn === HUMAN_SEAT) {
-      setTimeout(() => playSound('turn'), delay + 250);
+      setTimeout(() => {
+        playSound('turn');
+        haptic(35);
+      }, delay + 250);
     }
     seen.current = { id: match.id, round: r.index, count: r.events.length, status: match.status };
   }, [match]); // eslint-disable-line react-hooks/exhaustive-deps

@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { configureSound, unlockAudio } from './services/sound';
+import { configureHaptics, configureSound, unlockAudio } from './services/sound';
 import { useNav } from './state/navigation';
 import { useSettings } from './state/settingsStore';
 import { TileDefs } from './ui/components/Tile';
@@ -24,7 +24,9 @@ export function App() {
   const soundEnabled = useSettings((s) => s.soundEnabled);
   const volume = useSettings((s) => s.volume);
 
+  const haptics = useSettings((s) => s.haptics);
   useEffect(() => configureSound({ enabled: soundEnabled, volume }), [soundEnabled, volume]);
+  useEffect(() => configureHaptics(haptics), [haptics]);
 
   // Navegadores só liberam áudio depois de um toque/clique.
   useEffect(() => {

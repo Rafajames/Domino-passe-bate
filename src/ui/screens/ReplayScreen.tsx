@@ -119,7 +119,7 @@ export function ReplayScreen({ initialRound }: { initialRound?: number }) {
             onPlace={noop}
             lastTurn={lastPlay && lastPlay.kind === 'play' ? lastPlay.turn : null}
             scorePopup={null}
-            arrangement={{}}
+            arrangement={record.arrangements?.[round.index] ?? {}}
             organizing={false}
             onArrange={noop}
           />
