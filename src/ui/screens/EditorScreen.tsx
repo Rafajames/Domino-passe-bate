@@ -31,13 +31,15 @@ export function EditorScreen({ mode, profileId }: { mode: GameMode; profileId: s
   };
   const patch = (p: Partial<RuleSet>) => setRules((r) => ({ ...r, ...p }));
   const isPB = mode === 'passe-bate';
+  const isBurrinha = mode === 'burrinha';
+  const br = { startTiles: 3, penalty: 1, loser: 'last-remaining' as const, ...rules.burrinha };
 
   function setPlayers(players: 2 | 3 | 4) {
     setRules((r) => ({
       ...r,
       players,
       teams: players === 4 ? r.teams : false,
-      handSize: !isPB && r.boneyard ? researchedHandSize(players) : players === 4 ? 7 : r.handSize,
+      handSize: isBurrinha ? r.handSize : !isPB && r.boneyard ? researchedHandSize(players) : players === 4 ? 7 : r.handSize,
     }));
   }
 
@@ -80,6 +82,7 @@ export function EditorScreen({ mode, profileId }: { mode: GameMode; profileId: s
                 options={[
                   { value: 2, label: '2' },
                   { value: 3, label: '3', disabled: isPB },
+
                   { value: 4, label: '4' },
                 ]}
               />
@@ -87,9 +90,11 @@ export function EditorScreen({ mode, profileId }: { mode: GameMode; profileId: s
             <RuleRow label="Jogar em duplas" hint="Parceiros sentam frente a frente." badge={badge('teams')} inline>
               <Switch label="Jogar em duplas" checked={rules.teams} disabled={rules.players !== 4} onChange={(teams) => patch({ teams })} />
             </RuleRow>
+            {!isBurrinha && (
             <RuleRow label="Pedras por jogador" hint={`${remaining} pedra(s) fora das mãos`} badge={badge('handSize')} inline>
               <Stepper label="pedras por jogador" value={rules.handSize} min={3} max={Math.floor(28 / rules.players)} onChange={(handSize) => patch({ handSize })} />
             </RuleRow>
+            )}
             <RuleRow
               label="Dorme (compra)"
               hint={rules.boneyard ? 'Sem jogada, compra-se do dorme.' : remaining > 0 ? `Sem jogada, passa a vez. As ${remaining} restantes vão para o cemitério.` : 'Sem jogada, passa a vez.'}
@@ -156,7 +161,40 @@ export function EditorScreen({ mode, profileId }: { mode: GameMode; profileId: s
           </div>
         </section>
 
-        {isPB ? (
+        {isBurrinha && (
+          <section>
+            <h2 className="section-title">Burrinha</h2>
+            <div className="panel">
+              <RuleRow label="Pedras na primeira rodada" badge={badge('handSize')} inline>
+                <Stepper
+                  label="pedras na primeira rodada"
+                  value={br.startTiles}
+                  min={1}
+                  max={Math.floor(27 / rules.players)}
+                  onChange={(startTiles) => patch({ handSize: startTiles, burrinha: { ...br, startTiles } })}
+                />
+              </RuleRow>
+              <RuleRow label="Castigo de quem perde" hint="Pedras a mais na rodada seguinte." badge={badge('burrinha.penalty')} inline>
+                <Stepper label="castigo" value={br.penalty} min={1} max={3} onChange={(penalty) => patch({ burrinha: { ...br, penalty } })} />
+              </RuleRow>
+              <RuleRow label="Quem perde a rodada" badge={badge('burrinha.loser')}>
+                <Segmented
+                  label="Quem perde a rodada"
+                  value={br.loser}
+                  onChange={(loser) => patch({ burrinha: { ...br, loser } })}
+                  options={[
+                    { value: 'last-remaining', label: 'Último com pedras' },
+                    { value: 'most-pips', label: 'Mais pontos na mão' },
+                  ]}
+                />
+              </RuleRow>
+              <RuleRow label="Fim da partida" hint="Quando o dorme acaba. Quem levou mais castigos é a burrinha." badge={badge('burrinha.end')}>
+                <span />
+              </RuleRow>
+            </div>
+          </section>
+        )}
+        {isBurrinha ? null : isPB ? (
           <section>
             <h2 className="section-title">Batidas e pontuação</h2>
             <div className="panel">

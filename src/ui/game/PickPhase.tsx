@@ -17,7 +17,7 @@ export function PickPhase({ picking, players, boneyard, onExit }: { picking: Pic
   const cols = w > h * 1.4 ? 10 : 7;
   const rows = Math.ceil(picking.deck.length / cols);
   const unit = Math.max(22, Math.min(46, w > 0 ? Math.min((w - 24) / (cols * 1.3), (h - 24) / (rows * 2.5)) : 34));
-  const remaining = 28 - players * picking.need;
+  const remaining = 28 - (picking.sizes ? picking.sizes.reduce((a, b) => a + b, 0) : players * picking.need);
   const done = picking.chosen.length === picking.need;
 
   function doShuffle() {

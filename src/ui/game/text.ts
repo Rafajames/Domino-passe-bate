@@ -52,12 +52,22 @@ export function eventText(e: GameEvent, players: readonly PlayerSlot[], rules: R
   }
 }
 
+export function burrinhaLosers(r: RoundResult, players: readonly PlayerSlot[]): string {
+  return (r.loserSeats ?? []).map((s) => players[s]?.name ?? `Jogador ${s + 1}`).join(' e ');
+}
+
 export function resultTitle(r: RoundResult): string {
+  if (r.loserSeats) return r.type === 'blocked' ? 'Jogo trancado' : 'Fim da rodada';
   if (r.type === 'blocked') return 'Jogo trancado';
   return r.batida ? `${BATIDA_LABEL[r.batida]}!` : 'Bateu!';
 }
 
 export function resultDetail(r: RoundResult, players: readonly PlayerSlot[], rules: RuleSet): string {
+  if (r.loserSeats) {
+    const who = burrinhaLosers(r, players);
+    const plural = (r.loserSeats.length ?? 0) > 1;
+    return `${who} ${plural ? 'perderam' : 'perdeu'} e ${plural ? 'recomeçam' : 'recomeça'} com ${r.points} pedra${r.points === 1 ? '' : 's'} a mais.`;
+  }
   const who = r.winnerSeat !== null ? players[r.winnerSeat]?.name : r.winnerSide !== null ? sideName(r.winnerSide, rules, players) : null;
   if (r.winnerSide === null) return r.type === 'blocked' ? 'Empate na menor mão. Ninguém pontuou.' : 'Ninguém pontuou.';
   if (r.type === 'blocked') return `Vitória de ${who} pela menor mão: +${pts(r.points)}.`;

@@ -29,15 +29,15 @@ Também chamado de *Muggins* ou *Five Up* (variante com todas as carroças como 
 | Meta | 150 (as fontes variam entre 150 e 250), configurável | Pesquisada |
 | Vence ao atingir a meta | Sim, mesmo no meio da mão | Pesquisada |
 
-## Perfil "All Fives — Boa Vista" (`af-boa-vista`, v1)
+## Perfil "All Fives — Boa Vista" (`af-boa-vista`, v2)
 
 | Regra | Valor | Status |
 |---|---|---|
 | Jogadores | 4 | Regional |
 | Distribuição | 7 cada, sem dorme. As 28 pedras são distribuídas | Regional |
-| Duplas | Sim (provisório) | **Pendente** |
-| Saída | Carroça de seis (provisório) | **Pendente** |
-| Spinner, meta, arredondamento, mão trancada | Iguais ao padrão (provisório) | **Pendente** |
+| Duplas | Sim | Confirmada |
+| Saída | Carroça de seis | Confirmada |
+| Spinner, meta, arredondamento, mão trancada | Iguais ao padrão | Confirmada |
 | **Pontuação por passe provocado** | **Desativada e bloqueada** | **Pendente** |
 
 ### Regra relatada e pendente: pontuação por passe

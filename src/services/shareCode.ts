@@ -1,4 +1,4 @@
-import { ALL_FIVES_STANDARD, PASSE_BATE_PB } from '../engine/rules/profiles';
+import { ALL_FIVES_STANDARD, BURRINHA_PB, PASSE_BATE_PB } from '../engine/rules/profiles';
 import { validateRules } from '../engine/rules/validate';
 import type { GameMode, RuleSet } from '../engine/rules/types';
 
@@ -34,7 +34,7 @@ export function encodeProfile(p: SharedProfile): string {
 
 /** Mescla campo a campo sobre o perfil-base para tolerar códigos de versões antigas. */
 function sanitize(mode: GameMode, rules: Partial<RuleSet>): RuleSet {
-  const base = mode === 'passe-bate' ? PASSE_BATE_PB : ALL_FIVES_STANDARD;
+  const base = mode === 'passe-bate' ? PASSE_BATE_PB : mode === 'burrinha' ? BURRINHA_PB : ALL_FIVES_STANDARD;
   return {
     ...base,
     ...rules,
@@ -49,6 +49,7 @@ function sanitize(mode: GameMode, rules: Partial<RuleSet>): RuleSet {
       // Regra pendente: nunca pode ser ativada por um código importado.
       passBonus: { status: 'pending', enabled: false, points: null },
     },
+    burrinha: base.burrinha || rules.burrinha ? { startTiles: 3, penalty: 1, loser: 'last-remaining', ...base.burrinha, ...rules.burrinha } : undefined,
     assists: { ...base.assists, ...rules.assists },
   };
 }
@@ -62,7 +63,7 @@ export function decodeProfile(code: string): SharedProfile {
   } catch {
     throw new Error('Código corrompido.');
   }
-  if (parsed.mode !== 'passe-bate' && parsed.mode !== 'all-fives') throw new Error('Modalidade desconhecida.');
+  if (parsed.mode !== 'passe-bate' && parsed.mode !== 'all-fives' && parsed.mode !== 'burrinha') throw new Error('Modalidade desconhecida.');
   const rules = sanitize(parsed.mode, parsed.rules ?? {});
   const errors = validateRules(rules);
   if (errors.length) throw new Error(errors.join(' '));

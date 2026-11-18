@@ -6,7 +6,8 @@ import { hasValue, tileFromId } from '../../engine/tiles';
 import type { ArmId } from '../../engine/board';
 import type { Dir } from '../board/layout';
 import type { GameEvent } from '../../engine/types';
-import { HUMAN_SEAT, useGame } from '../../state/gameStore';
+import { useGame } from '../../state/gameStore';
+import { HandoffCover } from './HandoffCover';
 import { useNav } from '../../state/navigation';
 import { useProfiles } from '../../state/profilesStore';
 import { useSettings } from '../../state/settingsStore';
@@ -42,6 +43,8 @@ export function GameScreen() {
   const match = useGame((s) => s.match);
   const picking = useGame((s) => s.picking);
   const paused = useGame((s) => s.paused);
+  const HUMAN_SEAT = useGame((s) => s.viewSeat);
+  const handoff = useGame((s) => s.handoff);
   const arrangement = useGame((s) => s.arrangement);
   const handOrder = useGame((s) => s.handOrder);
   const flipped = useGame((s) => s.flipped);
@@ -64,7 +67,7 @@ export function GameScreen() {
     if (error) toast(error);
   }, [error, toast]);
 
-  useGameSounds(match);
+  useGameSounds(match, HUMAN_SEAT);
 
   // Mostra o resumo do fim de rodada depois da animação da última pedra.
   const status = match?.status;
@@ -89,7 +92,7 @@ export function GameScreen() {
     const lastScore = lastIndex(r.events, (e) => e.kind === 'score');
     const scoreEvent = r.events[lastScore];
     return { r, rules, myTurn, moves, playable, lastPlayEvent, lastScore, scoreEvent };
-  }, [match]);
+  }, [match, HUMAN_SEAT]);
 
   if (picking) {
     const pr = picking.pending.kind === 'new' ? picking.pending.rules : match?.frozen.rules;
@@ -106,6 +109,10 @@ export function GameScreen() {
         }}
       />
     );
+  }
+
+  if (match && handoff !== null) {
+    return <HandoffCover match={match} seat={handoff} />;
   }
 
   if (!match || !derived) {
@@ -182,7 +189,8 @@ export function GameScreen() {
     else if (!r.board.root && r.mustOpenDouble) statusText = 'Você sai — escolha uma carroça';
     else if (highlight && moves.length === 0) statusText = canBuy ? 'Sem jogada — compre do dorme' : 'Sem jogada — passe a vez';
     else statusText = selectedId ? 'Toque na ponta para jogar' : 'Sua vez — escolha uma pedra';
-  } else statusText = `Vez de ${turnPlayer?.name ?? ''}`;
+  } else if (rules.mode === 'burrinha' && hand.length === 0) statusText = `Você bateu! Vez de ${turnPlayer?.name ?? ''}`;
+  else statusText = `Vez de ${turnPlayer?.name ?? ''}`;
 
   const lastAnnouncement = r.events.length ? eventText(r.events[r.events.length - 1]!, match.players, rules) : '';
   const mySide = sideOf(HUMAN_SEAT, rules);
@@ -351,10 +359,11 @@ export function GameScreen() {
           }}
         />
       )}
-      {historyOpen && <HistoryPanel match={match} onClose={() => setHistoryOpen(false)} />}
+      {historyOpen && <HistoryPanel match={match} seat={HUMAN_SEAT} onClose={() => setHistoryOpen(false)} />}
       {showEnd && match.status !== 'playing' && (
         <RoundEndSheet
           match={match}
+          viewSeat={HUMAN_SEAT}
           onNext={nextRound}
           onExit={() => {
             quit();

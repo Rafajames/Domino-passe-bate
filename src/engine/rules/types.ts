@@ -5,7 +5,7 @@
  * copiado e congelado (FrozenRules) — mudanças posteriores no perfil não afetam
  * partidas em andamento.
  */
-export type GameMode = 'passe-bate' | 'all-fives';
+export type GameMode = 'passe-bate' | 'all-fives' | 'burrinha';
 
 /** Origem/confiabilidade de uma regra. Nunca tratar regionais como universais. */
 export type RuleStatus =
@@ -61,6 +61,23 @@ export interface AllFivesRules {
   passBonus: { status: 'pending'; enabled: false; points: null };
 }
 
+/**
+ * Burrinha (Paraíba): cada um começa com poucas pedras; quem perde a rodada
+ * recomeça a próxima com mais pedras, até o dorme acabar.
+ */
+export interface BurrinhaRules {
+  /** Pedras de cada jogador na primeira rodada. */
+  startTiles: number;
+  /** Pedras a mais para quem perde a rodada. */
+  penalty: number;
+  /**
+   * Quem perde a rodada (PENDENTE de confirmação):
+   * - 'last-remaining': quem bate sai; perde o último que ficar com pedras;
+   * - 'most-pips': a rodada acaba na primeira batida; perde quem tiver mais pontos na mão.
+   */
+  loser: 'last-remaining' | 'most-pips';
+}
+
 /** Assistências opcionais. Desligadas = modo fiel à mesa presencial. */
 export interface Assists {
   /** Destacar pedras jogáveis e pontas válidas. */
@@ -96,6 +113,8 @@ export interface RuleSet {
   targetScore: number;
   passeBate: PasseBateRules;
   allFives: AllFivesRules;
+  /** Só para a modalidade burrinha. */
+  burrinha?: BurrinhaRules;
   assists: Assists;
 }
 

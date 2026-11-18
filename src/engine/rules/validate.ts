@@ -7,7 +7,10 @@ export function validateRules(r: RuleSet): string[] {
   if (![2, 3, 4].includes(r.players)) errors.push('Número de jogadores deve ser 2, 3 ou 4.');
   if (r.teams && r.players !== 4) errors.push('Duplas exigem 4 jogadores.');
   if (r.handSize < 1 || r.handSize > 14) errors.push('Pedras por jogador devem estar entre 1 e 14.');
+  const startTiles = r.mode === 'burrinha' ? (r.burrinha?.startTiles ?? 3) : r.handSize;
+  if (r.players * startTiles >= totalTiles && r.mode === 'burrinha') errors.push('Pedras demais: precisa sobrar dorme na burrinha.');
   if (r.players * r.handSize > totalTiles) errors.push('Pedras insuficientes para essa distribuição.');
+  if (r.mode === 'burrinha' && r.handSize !== startTiles) errors.push('Na burrinha, as pedras iniciais devem ser iguais às pedras por jogador.');
   const remaining = totalTiles - r.players * r.handSize;
   if (r.boneyard && r.boneyardReserve > remaining) errors.push('Reserva do dorme maior que o dorme.');
   if (r.targetScore < 1) errors.push('Meta de pontuação deve ser positiva.');

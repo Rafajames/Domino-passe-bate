@@ -9,24 +9,24 @@
 - **Pesquisada**: padrão encontrado em fontes públicas.
 - **Pendente**: em revisão. Ou tem valor provisório configurável, ou fica desativada.
 
-## Perfil "Passe e Bate — Paraíba" (`pb-paraiba`, v2)
+## Perfil "Passe e Bate — Paraíba" (`pb-paraiba`, v3)
 
 | Regra | Valor | Status |
 |---|---|---|
 | Jogadores | 4, em duplas (parceiros frente a frente) | Regional |
 | Distribuição | 7 pedras cada, sem dorme (as 28 pedras são distribuídas) | Regional |
 | Sem jogada | Passa a vez | Regional |
-| Saída da 1ª rodada | Quem tem a carroça de seis sai com ela | **Pendente** |
-| Saída das seguintes | Quem venceu a rodada, com qualquer pedra | **Pendente** |
-| Sair só de carroça (opcional, desligado por padrão) | Toda rodada começa com uma carroça. Sem carroça, sai o próximo da roda que tiver; se ninguém tiver, embaralha de novo | **Pendente** (o que fazer quando quem sairia não tem carroça) |
+| Saída da 1ª rodada | Quem tem a carroça de seis sai com ela | Confirmada |
+| Saída das seguintes | Quem venceu a rodada, com qualquer pedra | Confirmada |
+| Sair só de carroça (opcional, desligado por padrão) | Toda rodada começa com uma carroça. Sem carroça, sai o próximo da roda que tiver; se ninguém tiver, embaralha de novo | Confirmada |
 | Batida simples | 1 | Regional (referência registrada) |
 | Batida de carroça | 2 | Regional |
 | Lá e lô com pedra simples | 3 | Regional |
 | Lá e lô de carroça (quadrada/cruzada) | 6 | Regional |
-| Jogo trancado | Menor mão individual vence e leva 1 ponto. Empate entre duplas: ninguém pontua | **Pendente** |
-| Meta da partida | 6 pontos | **Pendente (valor provisório)** |
+| Jogo trancado | Menor mão individual vence e leva 1 ponto. Empate entre duplas: ninguém pontua | Confirmada |
+| Meta da partida | 6 pontos | Confirmada |
 
-### Variação "Quadrada vale 4" (`pb-paraiba-quadrada-4`, v2)
+### Variação "Quadrada vale 4" (`pb-paraiba-quadrada-4`, v3)
 
 É igual ao perfil acima, mas a lá e lô de carroça vale **4**.
 

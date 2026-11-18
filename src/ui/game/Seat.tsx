@@ -26,7 +26,7 @@ export function Seat({ player, position, count, active, teamColor, bubble, showB
         <span className="seat__info">
           <span className="seat__name">{player.name}</span>
           <span className="seat__meta">
-            {count} pedra{count === 1 ? '' : 's'}
+            {count === 0 ? 'bateu ✓' : `${count} pedra${count === 1 ? '' : 's'}`}
             {player.kind === 'bot' && player.difficulty ? ` · ${DIFFICULTY_LABEL[player.difficulty]}` : ''}
           </span>
         </span>

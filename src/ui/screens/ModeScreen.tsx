@@ -19,6 +19,13 @@ const MODES: { mode: GameMode; title: string; subtitle: string; text: string; ti
     text: 'Feche as pontas em múltiplos de cinco para marcar durante a mão.',
     tiles: [[5, 5], [5, 0], [3, 2]],
   },
+  {
+    mode: 'burrinha',
+    title: 'Burrinha',
+    subtitle: 'Dois ou mais · Paraíba',
+    text: 'Três pedras cada. Quem perde recomeça com uma pedra a mais, até o dorme acabar.',
+    tiles: [[1, 3], [3, 3], [3, 6]],
+  },
 ];
 
 export function ModeScreen() {

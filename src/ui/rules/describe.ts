@@ -7,7 +7,7 @@ export interface RuleLine {
   status?: RuleStatus;
 }
 
-export const MODE_LABEL = { 'passe-bate': 'Passe e Bate', 'all-fives': 'All Fives' } as const;
+export const MODE_LABEL = { 'passe-bate': 'Passe e Bate', 'all-fives': 'All Fives', burrinha: 'Burrinha' } as const;
 
 const OPENING: Record<RuleSet['opening'], string> = {
   'double-six': 'Carroça de seis abre',
@@ -45,6 +45,26 @@ export function describeRules(rules: RuleSet, status: Record<string, RuleStatus>
       ? [{ key: 'openWithDouble', label: 'Sair de carroça', value: 'Toda rodada começa com uma carroça; sem carroça, sai o próximo que tiver', status: s('openWithDouble') ?? ('pending' as const) }]
       : []),
   ];
+  if (rules.mode === 'burrinha') {
+    const b = { startTiles: 3, penalty: 1, loser: 'last-remaining', ...rules.burrinha };
+    lines.splice(1, 1, {
+      key: 'handSize',
+      label: 'Distribuição',
+      value: `${b.startTiles} pedras cada na 1ª rodada · o resto fica no dorme${rules.boneyard ? ' para compra' : ' (sem compra)'}`,
+      status: s('handSize'),
+    });
+    lines.push(
+      { key: 'burrinha.penalty', label: 'Castigo', value: `Quem perde a rodada recomeça com ${b.penalty} pedra${b.penalty === 1 ? '' : 's'} a mais`, status: s('burrinha.penalty') },
+      {
+        key: 'burrinha.loser',
+        label: 'Quem perde',
+        value: b.loser === 'last-remaining' ? 'Quem bate sai; perde o último que ficar com pedras (trancado: mais pontos na mão)' : 'Na primeira batida, perde quem tiver mais pontos na mão',
+        status: s('burrinha.loser'),
+      },
+      { key: 'burrinha.end', label: 'Fim', value: 'Quando o dorme acaba. Quem levou mais castigos é a burrinha', status: s('burrinha.end') },
+    );
+    return lines;
+  }
   if (rules.mode === 'passe-bate') {
     const b = rules.passeBate.batidaPoints;
     lines.push(

@@ -2,6 +2,7 @@ import { canPlayOn, emptyBoard, endsSum, openEnds, placeTile, type BoardState } 
 import { createRng, shuffle } from './rng';
 import type { FrozenRules, RuleSet } from './rules/types';
 import { allFivesEndPoints, classifyBatida, scoreBlocked, scoreDomino, sideCount, sideOf } from './scoring';
+import { activeSeats, burrinhaRules, initialHandSizes, isBurrinha, mostPips, nextHandSizes, nextSeat } from './burrinha';
 import { fullSet, handPips, type Tile } from './tiles';
 import type { ArchivedRound, GameAction, GameEvent, MatchState, Move, PlayerSlot, RoundResult, RoundState } from './types';
 
@@ -26,12 +27,13 @@ function highestDoubleHolder(hands: readonly (readonly Tile[])[]): { seat: numbe
  * Valida mãos escolhidas pelos jogadores (modo "embaralhar e escolher"):
  * quantidade certa por jogador, pedras existentes e sem repetição.
  */
-export function validatePresetHands(rules: RuleSet, hands: readonly (readonly Tile[])[]): void {
+export function validatePresetHands(rules: RuleSet, hands: readonly (readonly Tile[])[], sizes?: readonly number[]): void {
   if (hands.length !== rules.players) throw new IllegalActionError('Mãos escolhidas não conferem com o número de jogadores.');
   const valid = new Set(fullSet(6).map((t) => t.id));
   const seen = new Set<string>();
-  for (const h of hands) {
-    if (h.length !== rules.handSize) throw new IllegalActionError(`Cada jogador deve escolher ${rules.handSize} pedras.`);
+  for (const [seat, h] of hands.entries()) {
+    const need = sizes?.[seat] ?? rules.handSize;
+    if (h.length !== need) throw new IllegalActionError(`Cada jogador deve escolher ${need} pedras.`);
     for (const t of h) {
       if (!valid.has(t.id) || seen.has(t.id)) throw new IllegalActionError(`Pedra inválida ou repetida: ${t.id}`);
       seen.add(t.id);
@@ -45,13 +47,17 @@ export function dealRound(
   index: number,
   previous: { starter: number; winnerSeat: number | null } | null,
   presetHands?: readonly (readonly Tile[])[],
+  handSizes?: readonly number[],
 ): RoundState {
+  const sizes = handSizes ?? new Array<number>(rules.players).fill(rules.handSize);
+  const offsets = sizes.map((_, s) => sizes.slice(0, s).reduce((a, b) => a + b, 0));
+  const totalDealt = sizes.reduce((a, b) => a + b, 0);
   const rng = createRng((seed + Math.imul(index + 1, 0x9e3779b1)) >>> 0);
   const deck = shuffle(fullSet(6), rng);
   const hands: Tile[][] = [];
   let rest: Tile[];
   if (presetHands) {
-    validatePresetHands(rules, presetHands);
+    validatePresetHands(rules, presetHands, sizes);
     presetHands.forEach((h) => hands.push(h.slice()));
     const taken = new Set(presetHands.flat().map((t) => t.id));
     rest = deck.filter((t) => !taken.has(t.id));
@@ -59,12 +65,12 @@ export function dealRound(
     let order = deck;
     // "Sair de carroça": se nenhuma mão tiver carroça, embaralha de novo (determinístico).
     for (let attempt = 0; attempt < 50; attempt++) {
-      const dealt = Array.from({ length: rules.players }, (_, s) => order.slice(s * rules.handSize, (s + 1) * rules.handSize));
+      const dealt = sizes.map((n, s) => order.slice(offsets[s], (offsets[s] ?? 0) + n));
       if (!rules.openWithDouble || dealt.some((h) => h.some((t) => t.a === t.b))) break;
       order = shuffle(fullSet(6), rng);
     }
-    for (let s = 0; s < rules.players; s++) hands.push(order.slice(s * rules.handSize, (s + 1) * rules.handSize));
-    rest = order.slice(rules.players * rules.handSize);
+    sizes.forEach((n, s) => hands.push(order.slice(offsets[s], (offsets[s] ?? 0) + n)));
+    rest = order.slice(totalDealt);
   }
 
   let starter = 0;
@@ -136,7 +142,9 @@ export interface CreateMatchInput {
 export function createMatch({ id, frozen, players, seed, now = new Date(), presetHands }: CreateMatchInput): MatchState {
   const rules = frozen.rules;
   if (players.length !== rules.players) throw new Error('Quantidade de jogadores não confere com as regras.');
+  const handSizes = isBurrinha(rules) ? initialHandSizes(rules) : undefined;
   return {
+    handSizes,
     id,
     seed,
     frozen,
@@ -144,7 +152,7 @@ export function createMatch({ id, frozen, players, seed, now = new Date(), prese
     scores: new Array<number>(sideCount(rules)).fill(0),
     roundStartScores: new Array<number>(sideCount(rules)).fill(0),
     archive: [],
-    round: dealRound(rules, seed, 0, null, presetHands),
+    round: dealRound(rules, seed, 0, null, presetHands, handSizes),
     history: [],
     status: 'playing',
     winnerSide: null,
@@ -297,11 +305,14 @@ export function applyAction(match: MatchState, action: GameAction): MatchState {
         mustOpenWith: null,
         mustOpenDouble: false,
         turnNumber: round.turnNumber + 1,
-        turn: (action.seat + 1) % rules.players,
+        turn: nextSeat(rules, hands, action.seat),
       };
       if (rules.mode === 'all-fives' && rules.allFives.winImmediately) {
         const winner = reachedTarget(scores, rules.targetScore);
         if (winner !== null) return { ...match, scores, round, status: 'finished', winnerSide: winner };
+      }
+      if ((hands[action.seat] ?? []).length === 0 && isBurrinha(rules)) {
+        return burrinhaAfterEmpty(match, round, action.seat);
       }
       if ((hands[action.seat] ?? []).length === 0) {
         const batida = classifyBatida(tile, endsBefore);
@@ -345,10 +356,14 @@ export function applyAction(match: MatchState, action: GameAction): MatchState {
         ...round,
         passesInRow: round.passesInRow + 1,
         turnNumber: round.turnNumber + 1,
-        turn: (action.seat + 1) % rules.players,
+        turn: nextSeat(rules, round.hands, action.seat),
         events: [...round.events, { kind: 'pass', seat: action.seat, turn: round.turnNumber, openValues }],
       };
-      if (round.passesInRow >= rules.players) {
+      const activeCount = isBurrinha(rules) ? activeSeats(round.hands).length : rules.players;
+      if (round.passesInRow >= activeCount && isBurrinha(rules)) {
+        return burrinhaEndRound(match, round, 'blocked', round.finished?.[0] ?? null, mostPips(round.hands, activeSeats(round.hands)));
+      }
+      if (round.passesInRow >= activeCount) {
         const { winnerSide, points } = scoreBlocked(rules, round.hands);
         const result: RoundResult = {
           round: round.index,
@@ -394,7 +409,7 @@ export function startNextRound(match: MatchState, presetHands?: readonly (readon
   if (match.status !== 'round-over') throw new IllegalActionError('A rodada atual ainda não terminou.');
   const prev = match.round;
   const winnerSeat = prev.result?.winnerSeat ?? blockedWinnerSeat(match);
-  const round = dealRound(match.frozen.rules, match.seed, prev.index + 1, { starter: prev.starter, winnerSeat }, presetHands);
+  const round = dealRound(match.frozen.rules, match.seed, prev.index + 1, { starter: prev.starter, winnerSeat }, presetHands, match.handSizes);
   const archived = archiveRound(match);
   return {
     ...match,
@@ -433,5 +448,64 @@ export function archiveRound(match: MatchState): ArchivedRound | null {
     result: r.result,
     scoresBefore: match.roundStartScores ?? new Array<number>(match.scores.length).fill(0),
     scoresAfter: match.scores,
+  };
+}
+
+// ---------------------------------------------------------------- burrinha
+
+/** Um jogador ficou sem pedras na burrinha. */
+function burrinhaAfterEmpty(match: MatchState, round: RoundState, seat: number): MatchState {
+  const rules = match.frozen.rules;
+  const finished = [...(round.finished ?? []), seat];
+  const active = activeSeats(round.hands);
+  const r: RoundState = { ...round, finished };
+  if (burrinhaRules(rules).loser === 'most-pips') {
+    return burrinhaEndRound(match, r, 'domino', seat, mostPips(round.hands, active));
+  }
+  if (active.length <= 1) return burrinhaEndRound(match, r, 'domino', finished[0] ?? seat, active);
+  return { ...match, round: r };
+}
+
+function burrinhaEndRound(
+  match: MatchState,
+  round: RoundState,
+  type: RoundResult['type'],
+  winnerSeat: number | null,
+  losers: readonly number[],
+): MatchState {
+  const rules = match.frozen.rules;
+  const { penalty } = burrinhaRules(rules);
+  const scores = match.scores.map((v, s) => (losers.includes(s) ? v + penalty : v));
+  const result: RoundResult = {
+    round: round.index,
+    type,
+    winnerSeat,
+    winnerSide: winnerSeat,
+    batida: null,
+    points: penalty,
+    loserSeats: losers,
+    pipCounts: round.hands.map(handPips),
+    hands: round.hands,
+  };
+  const { next, matchOver } = nextHandSizes(rules, match.handSizes ?? initialHandSizes(rules), losers);
+  const finishedRound: RoundState = { ...round, result, pendingClaim: null, events: [...round.events, { kind: 'round-end', result }] };
+  let loserSeats: number[] | undefined;
+  let winnerSide: number | null = null;
+  if (matchOver) {
+    const max = Math.max(...scores);
+    const min = Math.min(...scores);
+    loserSeats = scores.flatMap((v, s) => (v === max ? [s] : []));
+    const best = scores.flatMap((v, s) => (v === min ? [s] : []));
+    winnerSide = best.length === 1 ? (best[0] ?? null) : null;
+  }
+  return {
+    ...match,
+    scores,
+    handSizes: next,
+    round: finishedRound,
+    history: [...match.history, result],
+    status: matchOver ? 'finished' : 'round-over',
+    winnerSide,
+    loserSeats,
   };
 }

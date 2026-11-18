@@ -7,3 +7,4 @@ export * from './match';
 export * from './view';
 export * from './rules';
 export * from './replay';
+export * from './burrinha';

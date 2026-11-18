@@ -32,6 +32,8 @@ export interface RoundResult {
   readonly winnerSide: number | null;
   readonly batida: BatidaType | null;
   readonly points: number;
+  /** Burrinha: quem perdeu a rodada (recebe pedras a mais). */
+  readonly loserSeats?: readonly number[];
   readonly pipCounts: readonly number[];
   readonly hands: readonly (readonly Tile[])[];
 }
@@ -66,6 +68,8 @@ export interface RoundState {
   readonly pendingClaim: PendingClaim | null;
   readonly events: readonly GameEvent[];
   readonly result: RoundResult | null;
+  /** Burrinha: assentos que já bateram nesta rodada, em ordem. */
+  readonly finished?: readonly number[];
 }
 
 export interface PlayerSlot {
@@ -106,4 +110,8 @@ export interface MatchState {
   readonly status: 'playing' | 'round-over' | 'finished';
   readonly winnerSide: number | null;
   readonly startedAt: string;
+  /** Burrinha: pedras de cada jogador na rodada atual. */
+  readonly handSizes?: readonly number[];
+  /** Burrinha: quem terminou a partida com mais castigos ("a burrinha"). */
+  readonly loserSeats?: readonly number[];
 }

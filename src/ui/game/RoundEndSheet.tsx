@@ -1,18 +1,18 @@
 import { handPips } from '../../engine/tiles';
 import { sideOf } from '../../engine/scoring';
 import type { MatchState } from '../../engine/types';
-import { HUMAN_SEAT } from '../../state/gameStore';
 import { TileSvg } from '../components/Tile';
 import { sideColor } from './colors';
 import { resultDetail, resultTitle, sideName } from './text';
 import { Sheet } from './Sheet';
 
-export function RoundEndSheet({ match, onNext, onExit, onRematch, onReview }: { match: MatchState; onNext: () => void; onExit: () => void; onRematch: () => void; onReview: () => void }) {
+export function RoundEndSheet({ match, viewSeat: HUMAN_SEAT, onNext, onExit, onRematch, onReview }: { match: MatchState; viewSeat: number; onNext: () => void; onExit: () => void; onRematch: () => void; onReview: () => void }) {
   const rules = match.frozen.rules;
   const finished = match.status === 'finished';
   const r = match.round.result;
   const mySide = sideOf(HUMAN_SEAT, rules);
-  const won = match.winnerSide === mySide;
+  const burrinha = rules.mode === 'burrinha';
+  const won = burrinha ? !(match.loserSeats ?? []).includes(HUMAN_SEAT) : match.winnerSide === mySide;
   const title = finished ? (won ? 'Vitória!' : 'Fim de partida') : r ? resultTitle(r) : 'Fim da rodada';
 
   return (
@@ -20,7 +20,11 @@ export function RoundEndSheet({ match, onNext, onExit, onRematch, onReview }: { 
       <div className="round-end">
         {finished && (
           <p className="round-end__headline" style={{ color: won ? 'var(--brass-strong)' : 'var(--text-2)' }}>
-            {match.winnerSide !== null ? `${sideName(match.winnerSide, rules, match.players)} venceu${rules.teams ? 'm' : ''} a partida.` : 'Partida encerrada.'}
+            {burrinha
+              ? `${(match.loserSeats ?? []).map((s) => match.players[s]?.name).join(' e ')} ${(match.loserSeats?.length ?? 0) > 1 ? 'são as burrinhas' : 'é a burrinha'}! O dorme acabou.`
+              : match.winnerSide !== null
+                ? `${sideName(match.winnerSide, rules, match.players)} venceu${rules.teams ? 'm' : ''} a partida.`
+                : 'Partida encerrada.'}
           </p>
         )}
         {r && <p className="round-end__text">{finished ? `${resultTitle(r)} ` : ''}{resultDetail(r, match.players, rules)}</p>}
@@ -30,6 +34,7 @@ export function RoundEndSheet({ match, onNext, onExit, onRematch, onReview }: { 
             <div key={side} className="round-end__score" style={{ ['--side' as string]: sideColor(side, rules.teams) }}>
               <span>{sideName(side, rules, match.players)}</span>
               <strong>{s}</strong>
+              {burrinha && <small className="muted">castigo{s === 1 ? '' : 's'} · {match.handSizes?.[side] ?? '-'} pedras</small>}
             </div>
           ))}
         </div>

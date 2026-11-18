@@ -1,12 +1,11 @@
 import type { MatchState } from '../../engine/types';
 import { playerView } from '../../engine/view';
-import { HUMAN_SEAT } from '../../state/gameStore';
 import { eventText } from './text';
 import { Sheet } from './Sheet';
 
-export function HistoryPanel({ match, onClose }: { match: MatchState; onClose: () => void }) {
+export function HistoryPanel({ match, seat, onClose }: { match: MatchState; seat: number; onClose: () => void }) {
   // Usa a visão do jogador: compras dos outros aparecem sem revelar a pedra.
-  const view = playerView(match, HUMAN_SEAT);
+  const view = playerView(match, seat);
   const items = view.events
     .map((e, i) => ({ i, text: eventText(e, match.players, match.frozen.rules), kind: e.kind }))
     .filter((x) => x.text)

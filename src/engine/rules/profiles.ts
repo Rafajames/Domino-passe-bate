@@ -70,18 +70,38 @@ export const ALL_FIVES_BOA_VISTA: RuleSet = {
   assists: { ...defaultAssists },
 };
 
+/** Burrinha (Paraíba), conforme descrição do usuário em 18/11/2026. */
+export const BURRINHA_PB: RuleSet = {
+  mode: 'burrinha',
+  players: 4,
+  teams: false,
+  handSize: 3,
+  boneyard: true,
+  boneyardReserve: 0,
+  opening: 'any',
+  openWithDouble: false,
+  dealMode: 'auto',
+  nextRoundStarter: 'round-winner',
+  spinner: false,
+  targetScore: 999,
+  passeBate: { ...basePasseBate, batidaPoints: { ...basePasseBate.batidaPoints }, blocked: { ...basePasseBate.blocked } },
+  allFives: { ...baseAllFives },
+  burrinha: { startTiles: 3, penalty: 1, loser: 'last-remaining' },
+  assists: { ...defaultAssists },
+};
+
 const passeBateStatus: Record<string, RuleStatus> = {
   players: 'regional',
   teams: 'regional',
   handSize: 'regional',
   boneyard: 'regional',
-  opening: 'pending',
-  openWithDouble: 'pending',
-  nextRoundStarter: 'pending',
+  opening: 'confirmed',
+  openWithDouble: 'confirmed',
+  nextRoundStarter: 'confirmed',
   spinner: 'regional',
-  targetScore: 'pending',
+  targetScore: 'confirmed',
   'passeBate.batidaPoints': 'regional',
-  'passeBate.blocked': 'pending',
+  'passeBate.blocked': 'confirmed',
 };
 
 export const BUILTIN_PROFILES: readonly RuleProfile[] = [
@@ -89,7 +109,7 @@ export const BUILTIN_PROFILES: readonly RuleProfile[] = [
     id: 'pb-paraiba',
     name: 'Passe e Bate — Paraíba',
     mode: 'passe-bate',
-    version: 2,
+    version: 3,
     builtIn: true,
     description:
       'Dominó tradicional em duplas, sem dorme. Batidas regionais paraibanas: simples 1, carroça 2, lá e lô 3, lá e lô de carroça 6.',
@@ -103,7 +123,7 @@ export const BUILTIN_PROFILES: readonly RuleProfile[] = [
     id: 'pb-paraiba-quadrada-4',
     name: 'Passe e Bate — Quadrada vale 4',
     mode: 'passe-bate',
-    version: 2,
+    version: 3,
     builtIn: true,
     basedOn: 'pb-paraiba',
     description: 'Variação registrada em que a batida quadrada (lá e lô de carroça) vale 4 pontos.',
@@ -149,7 +169,7 @@ export const BUILTIN_PROFILES: readonly RuleProfile[] = [
     id: 'af-boa-vista',
     name: 'All Fives — Boa Vista',
     mode: 'all-fives',
-    version: 1,
+    version: 2,
     builtIn: true,
     description:
       'Dominó de pontos de Boa Vista-RR: quatro jogadores, sete pedras cada, sem dorme — as 28 pedras são distribuídas.',
@@ -158,15 +178,15 @@ export const BUILTIN_PROFILES: readonly RuleProfile[] = [
       players: 'regional',
       handSize: 'regional',
       boneyard: 'regional',
-      teams: 'pending',
-      opening: 'pending',
-      nextRoundStarter: 'pending',
-      spinner: 'pending',
-      targetScore: 'pending',
+      teams: 'confirmed',
+      opening: 'confirmed',
+      nextRoundStarter: 'confirmed',
+      spinner: 'confirmed',
+      targetScore: 'confirmed',
       'allFives.scoringMode': 'confirmed',
-      'allFives.endRounding': 'pending',
-      'allFives.blockedScoring': 'pending',
-      'allFives.winImmediately': 'pending',
+      'allFives.endRounding': 'confirmed',
+      'allFives.blockedScoring': 'confirmed',
+      'allFives.winImmediately': 'confirmed',
       'allFives.passBonus': 'pending',
     },
     history: [],
@@ -175,9 +195,35 @@ export const BUILTIN_PROFILES: readonly RuleProfile[] = [
   },
 ];
 
+export const BURRINHA_PROFILE: RuleProfile = {
+  id: 'burrinha-pb',
+  name: 'Burrinha — Paraíba',
+  mode: 'burrinha',
+  version: 1,
+  builtIn: true,
+  description:
+    'Dois ou mais jogadores, três pedras cada. Quem perde a rodada recomeça a próxima com uma pedra a mais, até o dorme acabar.',
+  rules: BURRINHA_PB,
+  ruleStatus: {
+    players: 'confirmed',
+    handSize: 'confirmed',
+    'burrinha.penalty': 'confirmed',
+    'burrinha.loser': 'pending',
+    'burrinha.end': 'pending',
+    boneyard: 'pending',
+    opening: 'pending',
+    nextRoundStarter: 'pending',
+  },
+  history: [],
+  createdAt: '2026-11-18T00:00:00.000Z',
+  updatedAt: '2026-11-18T00:00:00.000Z',
+};
+
 export function findBuiltin(id: string): RuleProfile | undefined {
   return BUILTIN_PROFILES.find((p) => p.id === id);
 }
+
+(BUILTIN_PROFILES as RuleProfile[]).push(BURRINHA_PROFILE);
 
 /** Distribuição recomendada pelo padrão pesquisado para All Fives com dorme. */
 export function researchedHandSize(players: number): number {

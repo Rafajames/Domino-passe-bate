@@ -81,6 +81,13 @@ function simulate(view: PlayerView, world: { hands: RoundState['hands']; boneyar
     const seat = m.round.turn;
     m = applyAction(m, rolloutAction(m, seat, rng));
   }
+  if (rules.mode === 'burrinha') {
+    // Burrinha: o que importa é não ser o perdedor da rodada.
+    const res = m.round.result;
+    const lost = res?.loserSeats?.includes(view.seat) ?? false;
+    const out = (m.round.finished ?? []).indexOf(view.seat);
+    return (lost ? -10 : 2) + (out >= 0 ? 1 - out * 0.2 : 0) - (m.round.hands[view.seat]?.length ?? 0) * 0.1;
+  }
   const mySide = sideOf(view.seat, rules);
   const myScore = m.scores[mySide] ?? 0;
   const others = m.scores.reduce((s, v, i) => (i === mySide ? s : Math.max(s, v)), 0);

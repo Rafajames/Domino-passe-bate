@@ -25,8 +25,12 @@ export function SetupScreen({ profileId }: { profileId: string }) {
   const [dealMode, setDealMode] = useState<DealMode>(profile?.rules.dealMode ?? 'auto');
   const [openWithDouble, setOpenWithDouble] = useState(profile?.rules.openWithDouble ?? false);
 
+  const [humans, setHumans] = useState<Record<number, string>>({});
+  const [playersChoice, setPlayersChoice] = useState<2 | 3 | 4>(profile?.rules.players ?? 4);
+
   if (!profile) return null;
-  const players = profile.rules.players;
+  const isBurrinha = profile.rules.mode === 'burrinha';
+  const players = isBurrinha ? playersChoice : profile.rules.players;
   const remaining = 28 - players * handSize;
   const sizes = [5, 6, 7].filter((n) => n * players <= 28);
   if (!sizes.includes(profile.rules.handSize)) sizes.push(profile.rules.handSize);
@@ -34,13 +38,25 @@ export function SetupScreen({ profileId }: { profileId: string }) {
   // Ajustes desta partida (não alteram o perfil salvo).
   const rules = {
     ...profile.rules,
-    handSize,
-    boneyard: remaining > 0 ? boneyard : false,
+    players,
+    handSize: isBurrinha ? profile.rules.handSize : handSize,
+    boneyard: isBurrinha ? profile.rules.boneyard : remaining > 0 ? boneyard : false,
     dealMode,
     openWithDouble,
     assists: faithful ? { highlightPlayable: false, autoScore: false } : { highlightPlayable: true, autoScore: true },
   };
-  const opponents = rules.teams ? 'Você e um bot parceiro contra dois bots' : `Você contra ${rules.players - 1} bot${rules.players > 2 ? 's' : ''}`;
+  const humanSeats = Object.keys(humans).map(Number).filter((s) => s < players);
+  const botCount = players - 1 - humanSeats.length;
+  const opponents = humanSeats.length
+    ? `${humanSeats.length + 1} pessoas neste aparelho${botCount ? ` e ${botCount} bot${botCount > 1 ? 's' : ''}` : ''} — passem o celular a cada vez`
+    : rules.teams
+      ? 'Você e um bot parceiro contra dois bots'
+      : `Você contra ${players - 1} bot${players > 2 ? 's' : ''}`;
+  const seatLabel = (seat: number) => {
+    if (players === 2) return 'À sua frente';
+    if (players === 3) return seat === 1 ? 'À sua direita' : 'À sua esquerda';
+    return seat === 1 ? 'À sua direita' : seat === 2 ? (rules.teams ? 'À sua frente (parceiro)' : 'À sua frente') : 'À sua esquerda';
+  };
 
   return (
     <main className="screen">
@@ -53,6 +69,52 @@ export function SetupScreen({ profileId }: { profileId: string }) {
         </div>
 
         <section>
+          <h3 className="section-title" style={{ marginBottom: 4 }}>Quem joga</h3>
+          <p className="muted" style={{ fontSize: 'var(--fs-xs)', marginBottom: 8 }}>
+            Mais de uma pessoa? Escolha "Pessoa" nos lugares e passem o celular — as pedras ficam escondidas entre uma vez e outra.
+          </p>
+          <div className="list">
+            {Array.from({ length: players - 1 }, (_, i) => i + 1).map((seat) => {
+              const isHuman = seat in humans;
+              return (
+                <div key={seat} className="list__item" style={{ cursor: 'default', flexWrap: 'wrap' }}>
+                  <span className="list__main" style={{ minWidth: 120 }}>
+                    <span className="list__label">{seatLabel(seat)}</span>
+                  </span>
+                  <Segmented<'bot' | 'human'>
+                    label={`Lugar ${seatLabel(seat)}`}
+                    value={isHuman ? 'human' : 'bot'}
+                    onChange={(v) =>
+                      setHumans((h) => {
+                        const next = { ...h };
+                        if (v === 'human') next[seat] = h[seat] ?? '';
+                        else delete next[seat];
+                        return next;
+                      })
+                    }
+                    options={[
+                      { value: 'bot', label: 'Bot' },
+                      { value: 'human', label: 'Pessoa' },
+                    ]}
+                  />
+                  {isHuman && (
+                    <input
+                      className="input"
+                      style={{ width: '100%' }}
+                      placeholder={`Nome (ex.: Jogador ${seat + 1})`}
+                      maxLength={20}
+                      value={humans[seat]}
+                      onChange={(e) => setHumans((h) => ({ ...h, [seat]: e.target.value }))}
+                      aria-label={`Nome de quem senta ${seatLabel(seat).toLowerCase()}`}
+                    />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        <section style={{ display: botCount === 0 ? 'none' : undefined }}>
           <h3 className="section-title" style={{ marginBottom: 8 }}>Dificuldade dos bots</h3>
           <div className="difficulty">
             {LEVELS.map((lvl, i) => (
@@ -70,14 +132,28 @@ export function SetupScreen({ profileId }: { profileId: string }) {
         </section>
 
         <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <h3 className="section-title">Pedras</h3>
-          <Segmented
-            label="Pedras por jogador"
-            value={handSize}
-            onChange={setHandSize}
-            options={sizes.map((n) => ({ value: n, label: `${n} cada` }))}
-          />
-          {remaining > 0 && (
+          <h3 className="section-title">{isBurrinha ? 'Mesa' : 'Pedras'}</h3>
+          {isBurrinha && (
+            <Segmented<2 | 3 | 4>
+              label="Jogadores"
+              value={playersChoice}
+              onChange={setPlayersChoice}
+              options={[
+                { value: 2, label: '2 jogadores' },
+                { value: 3, label: '3 jogadores' },
+                { value: 4, label: '4 jogadores' },
+              ]}
+            />
+          )}
+          {!isBurrinha && (
+            <Segmented
+              label="Pedras por jogador"
+              value={handSize}
+              onChange={setHandSize}
+              options={sizes.map((n) => ({ value: n, label: `${n} cada` }))}
+            />
+          )}
+          {!isBurrinha && remaining > 0 && (
             <Segmented
               label="O que fazer com as pedras que sobram"
               value={boneyard ? 'dorme' : 'cemiterio'}
@@ -89,7 +165,9 @@ export function SetupScreen({ profileId }: { profileId: string }) {
             />
           )}
           <p className="muted" style={{ fontSize: 'var(--fs-xs)' }}>
-            {remaining === 0
+            {isBurrinha
+              ? `Cada um começa com ${profile.rules.burrinha?.startTiles ?? 3} pedras; as outras ${28 - players * (profile.rules.burrinha?.startTiles ?? 3)} ficam no dorme.`
+              : remaining === 0
               ? 'Todas as 28 pedras são distribuídas.'
               : boneyard
                 ? `As ${remaining} pedras que sobram ficam no dorme: quem não tem jogada compra.`
@@ -147,7 +225,12 @@ export function SetupScreen({ profileId }: { profileId: string }) {
             className="btn btn--primary btn--block"
             style={{ minHeight: 54, fontSize: 'var(--fs-lg)' }}
             onClick={() => {
-              startSolo(profile, rules, difficulty);
+              startSolo(
+                profile,
+                rules,
+                difficulty,
+                humanSeats.map((seat) => ({ seat, name: humans[seat] || `Jogador ${seat + 1}` })),
+              );
               replace({ name: 'game' });
             }}
           >

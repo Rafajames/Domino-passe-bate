@@ -46,6 +46,7 @@ export function replayRound(frozen: FrozenRules, players: readonly PlayerSlot[],
     players,
     scores: round.scoresBefore,
     roundStartScores: round.scoresBefore,
+    handSizes: frozen.rules.mode === 'burrinha' ? round.initial.hands.map((h) => h.length) : undefined,
     archive: [],
     round: {
       index: round.index,

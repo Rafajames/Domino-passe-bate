@@ -4,6 +4,14 @@ Regras: versões publicadas **nunca são editadas nem apagadas**. Qualquer mudan
 
 Perfis personalizados guardam o próprio histórico (`RuleProfile.history`) a cada "Salvar nova versão".
 
+## 2026-11-18 — regras confirmadas pelo usuário (sem mudança de valores)
+
+- `pb-paraiba` e `pb-paraiba-quadrada-4` → v3; `af-boa-vista` → v2.
+- O usuário mandou **manter como está** as regras que estavam pendentes. Elas passam a **confirmadas**:
+  - Passe e Bate: saída, saída das rodadas seguintes, jogo trancado, meta e "sair só de carroça" (sem carroça, sai o próximo da roda que tiver).
+  - Boa Vista: duplas, saída, spinner, meta, arredondamento, mão trancada e vencer ao atingir a meta.
+- **Continua pendente e desativada**: a pontuação por passe provocado (Boa Vista).
+
 ## 2026-11-15 — v2: definição de lá e lô corrigida
 
 - `pb-paraiba` e `pb-paraiba-quadrada-4` passam para a v2. Valores de pontos inalterados.

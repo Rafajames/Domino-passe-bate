@@ -19,7 +19,9 @@ export function Scoreboard({ match, pulseSide }: { match: MatchState; pulseSide:
         ))}
       </div>
       <span className="scoreboard__target">
-        até {rules.targetScore} · rodada {match.round.index + 1}
+        {rules.mode === 'burrinha'
+          ? `castigos · rodada ${match.round.index + 1} · dorme ${match.round.boneyard.length}`
+          : `até ${rules.targetScore} · rodada ${match.round.index + 1}`}
       </span>
     </div>
   );
