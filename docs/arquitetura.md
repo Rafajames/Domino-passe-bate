@@ -41,7 +41,23 @@ São coisas diferentes:
 - **Fiscalização das regras presenciais (opcional)**: `assists.highlightPlayable` e `assists.autoScore`. No modo fiel, ninguém destaca jogadas nem soma pontos por você.
 - **Ainda não implementado**: aceitar jogadas irregulares (pedra que não encaixa, passe falso) para que os outros possam contestar ou deixar passar, como na mesa. O desenho previsto é uma ação `irregular-play`, registrada e visível, com uma janela de contestação para os adversários. Precisa ser validado com os jogadores antes, porque mexe na integridade do placar.
 
-## Multiplayer (Etapa 5): desenho
+## Online entre amigos (implementado, sem servidor próprio)
+
+O usuário não tinha banco de dados disponível, então o online atual é **P2P**:
+
+- O aparelho de quem cria a sala (**anfitrião**) roda o motor e é a única fonte da verdade (`src/state/onlineStore.ts`).
+- Convidados se conectam direto ao anfitrião (WebRTC via PeerJS). O servidor público do PeerJS só apresenta os aparelhos e não guarda nada.
+- A cada mudança, o anfitrião envia a cada convidado um **estado redigido** (`src/net/redact.ts`): mãos alheias, dorme e cemitério viram pedras viradas, e as compras dos outros não mostram a pedra. Há teste garantindo isso.
+- O convidado envia ações; o anfitrião valida com `applyAction`. Ações inválidas voltam como erro.
+- **Reconexão**: o convidado guarda um `clientId`. Ao voltar, o anfitrião devolve o mesmo lugar e o estado atual. Se alguém não volta, o anfitrião pode colocar um bot no lugar.
+- **Limites**:
+  - o anfitrião precisa manter o app aberto;
+  - em tese, ele poderia inspecionar as mãos com ferramentas técnicas;
+  - algumas redes móveis bloqueiam WebRTC sem um servidor TURN.
+  - Por isso, essas partidas **não contam para ranking**.
+- Quando houver servidor, o mesmo protocolo pode trocar o anfitrião P2P por uma função de servidor (ver abaixo).
+
+## Multiplayer com servidor (futuro): desenho
 
 1. **Autenticação**: Supabase Auth (link mágico por e-mail e Google), com perfil em `profiles`.
 2. **Salas**: `rooms` com código de 6 caracteres e link de convite. Antes de aceitar, o convidado vê o `RuleSummary` do perfil e da versão escolhidos.

@@ -2,8 +2,8 @@
 
 ## Próximos passos (em ordem)
 
-1. **Validar as regras pendentes** com jogadores da Paraíba e de Boa Vista: saída, jogo trancado, meta e duplas no Boa Vista (a definição de lá e lô já foi confirmada na v2). Depois, publicar uma nova versão dos perfis.
-2. **Etapa 5 — Multiplayer**: Auth, Edge Function `match-action`, Realtime, salas, convites, reconexão e chat.
+1. **Confirmar os pontos pendentes da burrinha** (quem perde, compra, saída e fim da partida) e o ponto por passe de Boa Vista.
+2. **Servidor** (quando houver banco disponível): contas, ranking, salas públicas e partida rápida. O online entre amigos já funciona via P2P.
 3. **Etapa 6 — Competição**: tabelas de ranking por modalidade/formato/região/temporada, torneios (eliminatória, grupos, finais), conquistas e medalhas.
 4. **IA**: Web Worker para o Mestre; ajuste fino com o `npm run bench`.
 5. **Modo fiel completo**: marcação manual da batida, jogadas irregulares contestáveis e muggins (opcional).
