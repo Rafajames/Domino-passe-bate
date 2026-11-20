@@ -26,6 +26,28 @@ npm run bench      # benchmark de força entre os níveis da IA (demorado)
 
 O app roda **100% offline**. Os recursos online (Etapa 5) usam o Supabase quando `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` estão definidos (veja `.env.example`).
 
+## App Android (APK)
+
+O jogo também sai como app Android, feito com [Capacitor](https://capacitorjs.com/) (pasta `android/`).
+A cada push, o GitHub Actions (`.github/workflows/android.yml`) monta o APK e publica na Release
+**`android-latest`** do repositório.
+
+**Para instalar no celular:** abra a página *Releases* do repositório no Android, baixe `passe-e-bate.apk`
+e toque nele. Na primeira vez o Android pede para permitir instalar apps dessa fonte (o navegador ou o
+gerenciador de arquivos). As próximas versões instalam por cima, sem apagar o progresso.
+
+Para gerar localmente (precisa do Android Studio/SDK e do JDK 21):
+
+```bash
+npm run build && npx cap sync android
+cd android && ./gradlew assembleRelease   # APK em android/app/build/outputs/apk/release/
+```
+
+O APK é assinado com uma chave de *sideload* que fica no repositório (`android/app/sideload.keystore`),
+para que cada versão atualize a anterior. Ela serve só para instalar por fora da Play Store: para publicar
+na loja, gere uma chave privada e passe por `ANDROID_KEYSTORE_FILE`, `ANDROID_KEYSTORE_PASSWORD`,
+`ANDROID_KEY_ALIAS` e `ANDROID_KEY_PASSWORD`.
+
 ## Estrutura
 
 ```

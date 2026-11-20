@@ -1,0 +1,74 @@
+# Monta o APK do jogo para Android e publica na Release "android-latest".
+# Para baixar no celular: abra a página de Releases do repositório e toque em passe-e-bate.apk.
+name: App Android (APK)
+
+on:
+  push:
+    paths-ignore:
+      - 'docs/**'
+      - '**.md'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-apk
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Testes
+        run: npm test
+
+      - name: Build da web
+        run: npm run build
+
+      - name: Copiar o build para o projeto Android
+        run: npx cap sync android
+
+      - name: Montar o APK
+        working-directory: android
+        env:
+          ANDROID_VERSION_CODE: ${{ github.run_number }}
+          ANDROID_VERSION_NAME: 1.0.${{ github.run_number }}
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon --stacktrace
+          cp app/build/outputs/apk/release/app-release.apk ../passe-e-bate.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: passe-e-bate-apk
+          path: passe-e-bate.apk
+
+      - name: Publicar na Release android-latest
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete android-latest --yes --cleanup-tag || true
+          gh release create android-latest passe-e-bate.apk \
+            --target "${{ github.sha }}" \
+            --title "Passe & Bate para Android (versão 1.0.${{ github.run_number }})" \
+            --notes "APK gerado automaticamente a partir do commit ${{ github.sha }} (branch ${{ github.ref_name }}). Baixe passe-e-bate.apk no celular e instale. Na primeira vez o Android pede para permitir instalar apps desta fonte."

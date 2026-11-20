@@ -12,10 +12,13 @@ import { RuleSummary } from '../components/RuleSummary';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { useToast } from '../components/Toast';
 import { MODE_LABEL } from '../rules/describe';
+import { publicBaseUrl, shareText } from '../../services/platform';
 import './menus.css';
 
-function roomLink(code: string): string {
-  return `${location.origin}${import.meta.env.BASE_URL}?sala=${code}`;
+/** Link de convite; no app sem site público configurado não há link, só o código. */
+function roomLink(code: string): string | undefined {
+  const base = publicBaseUrl();
+  return base ? `${base}?sala=${code}` : undefined;
 }
 
 export function OnlineScreen({ code: initialCode }: { code?: string }) {
@@ -140,14 +143,13 @@ function Lobby() {
   async function share() {
     if (!code) return;
     const link = roomLink(code);
+    const text = link
+      ? `Bora jogar dominó? Sala ${code}`
+      : `Bora jogar dominó no Passe & Bate? Abra o jogo, toque em Jogar online e entre na sala ${code}.`;
     try {
-      if (navigator.share) await navigator.share({ title: 'Passe & Bate', text: `Bora jogar dominó? Sala ${code}`, url: link });
-      else {
-        await navigator.clipboard.writeText(link);
-        toast('Link copiado.');
-      }
+      if ((await shareText({ title: 'Passe & Bate', text, url: link })) === 'copied') toast(link ? 'Link copiado.' : 'Convite copiado.');
     } catch {
-      /* cancelado */
+      toast('Não foi possível compartilhar automaticamente.');
     }
   }
 
@@ -168,7 +170,7 @@ function Lobby() {
         <strong style={{ fontFamily: 'var(--font-display)', fontSize: '2.6rem', letterSpacing: '0.18em' }}>{code}</strong>
         {role === 'host' && (
           <button className="btn btn--sm" onClick={share}>
-            <Icon name="share" size={18} /> Convidar (enviar link)
+            <Icon name="share" size={18} /> Convidar
           </button>
         )}
       </section>
