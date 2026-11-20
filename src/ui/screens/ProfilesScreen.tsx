@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { GameMode, RuleProfile } from '../../engine/rules/types';
+import { shareText } from '../../services/platform';
 import { decodeProfile, encodeProfile } from '../../services/shareCode';
 import { useNav } from '../../state/navigation';
 import { useProfiles } from '../../state/profilesStore';
@@ -25,12 +26,8 @@ export function ProfilesScreen({ mode }: { mode: GameMode }) {
   async function share(p: RuleProfile) {
     const code = encodeProfile({ name: p.name, mode: p.mode, rules: p.rules, basedOn: p.basedOn ?? p.id });
     try {
-      if (navigator.share) {
-        await navigator.share({ title: `Regras: ${p.name}`, text: `Perfil de regras “${p.name}” para o Passe & Bate:\n${code}` });
-        return;
-      }
-      await navigator.clipboard.writeText(code);
-      toast('Código copiado. Envie para seus amigos.');
+      const result = await shareText({ title: `Regras: ${p.name}`, text: `Perfil de regras “${p.name}” para o Passe & Bate:\n${code}` });
+      if (result === 'copied') toast('Código copiado. Envie para seus amigos.');
     } catch {
       toast('Não foi possível compartilhar automaticamente.');
     }
