@@ -34,7 +34,7 @@ jobs:
           java-version: 21
           cache: gradle
 
-      - uses: android-actions/setup-android@v3
+      # O runner ubuntu-latest já traz o Android SDK (ANDROID_HOME) com as licenças aceitas.
 
       - name: Instalar dependências
         run: npm ci
