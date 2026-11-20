@@ -44,6 +44,9 @@ jobs:
 
       - name: Build da web
         run: npm run build
+        env:
+          # Link de convite do app aponta para a versão web no GitHub Pages.
+          VITE_PUBLIC_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
 
       - name: Copiar o build para o projeto Android
         run: npx cap sync android
