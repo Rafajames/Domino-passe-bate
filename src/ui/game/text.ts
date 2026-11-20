@@ -34,7 +34,7 @@ export function eventText(e: GameEvent, players: readonly PlayerSlot[], rules: R
   const name = (seat: number) => players[seat]?.name ?? `Jogador ${seat + 1}`;
   switch (e.kind) {
     case 'round-start':
-      return `Rodada ${e.round + 1}: ${name(e.starter)} sai${e.mustOpenWith ? ` com a ${tileName(e.mustOpenWith)}` : e.mustOpenDouble ? ' de carroça' : ''}.`;
+      return `${redealText(e.redeals, players)}Rodada ${e.round + 1}: ${name(e.starter)} sai${e.mustOpenWith ? ` com a ${tileName(e.mustOpenWith)}` : e.mustOpenDouble ? ' de carroça' : ''}.`;
     case 'play':
       return `${name(e.seat)} jogou ${e.tile.a === e.tile.b ? 'a ' : ''}${tileName(e.tile.id)} ${ARM_LABEL[e.arm]}.${rules.mode === 'all-fives' ? ` Pontas: ${e.endsSum}.` : ''}`;
     case 'draw':
@@ -52,17 +52,32 @@ export function eventText(e: GameEvent, players: readonly PlayerSlot[], rules: R
   }
 }
 
+const NUM = ['zero', 'uma', 'duas', 'três', 'quatro', 'cinco', 'seis', 'sete'];
+
+/** "Biu veio com quatro carroças: embaralhado de novo." (uma frase por redistribuição) */
+export function redealText(redeals: readonly { seat: number; doubles: number }[] | undefined, players: readonly PlayerSlot[]): string {
+  if (!redeals?.length) return '';
+  return redeals.map((r) => `${players[r.seat]?.name ?? `Jogador ${r.seat + 1}`} veio com ${NUM[r.doubles] ?? r.doubles} carroças: embaralhado de novo. `).join('');
+}
+
 export function burrinhaLosers(r: RoundResult, players: readonly PlayerSlot[]): string {
   return (r.loserSeats ?? []).map((s) => players[s]?.name ?? `Jogador ${s + 1}`).join(' e ');
 }
 
+const countDoublesIn = (r: RoundResult) => (r.winnerSeat !== null ? (r.hands[r.winnerSeat] ?? []).filter((t) => t.a === t.b).length : 0);
+
 export function resultTitle(r: RoundResult): string {
+  if (r.type === 'carrocas') return `${(NUM[countDoublesIn(r)] ?? '').replace(/^./, (c) => c.toUpperCase())} carroças!`;
   if (r.loserSeats) return r.type === 'blocked' ? 'Jogo trancado' : 'Fim da rodada';
   if (r.type === 'blocked') return 'Jogo trancado';
   return r.batida ? `${BATIDA_LABEL[r.batida]}!` : 'Bateu!';
 }
 
 export function resultDetail(r: RoundResult, players: readonly PlayerSlot[], rules: RuleSet): string {
+  if (r.type === 'carrocas') {
+    const who = r.winnerSeat !== null ? players[r.winnerSeat]?.name : '';
+    return `${who} veio com ${NUM[countDoublesIn(r)] ?? ''} carroças e ${rules.teams ? 'a dupla ganhou' : 'ganhou'} a partida.`;
+  }
   if (r.loserSeats) {
     const who = burrinhaLosers(r, players);
     const plural = (r.loserSeats.length ?? 0) > 1;

@@ -4,6 +4,13 @@ Regras: versões publicadas **nunca são editadas nem apagadas**. Qualquer mudan
 
 Perfis personalizados guardam o próprio histórico (`RuleProfile.history`) a cada "Salvar nova versão".
 
+## 2026-11-20 — v4: regra das carroças
+
+- `pb-paraiba` e `pb-paraiba-quadrada-4` → v4.
+- **Quatro carroças** na mão ao distribuir: embaralha e distribui de novo.
+- **Cinco ou mais carroças**: o jogador ganha a partida na hora (em duplas, a dupla).
+- Regra informada pelo usuário; confirmada. As duas partes podem ser ligadas e desligadas no editor (padrão desligado nas outras modalidades).
+
 ## 2026-11-18 — regras confirmadas pelo usuário (sem mudança de valores)
 
 - `pb-paraiba` e `pb-paraiba-quadrada-4` → v3; `af-boa-vista` → v2.

@@ -41,6 +41,22 @@ export function describeRules(rules: RuleSet, status: Record<string, RuleStatus>
       status: s('handSize') ?? s('boneyard'),
     },
     { key: 'opening', label: 'Saída', value: `${OPENING[rules.opening]}; depois, ${rules.nextRoundStarter === 'round-winner' ? 'quem venceu a rodada' : 'o próximo jogador'}`, status: s('opening') },
+    ...(rules.doubles && (rules.doubles.redealAt || rules.doubles.winAt)
+      ? [
+          {
+            key: 'doubles',
+            label: 'Carroças na mão',
+            value: [
+              rules.doubles.redealAt ? `com ${rules.doubles.redealAt}, embaralha de novo` : null,
+              rules.doubles.winAt ? `com ${rules.doubles.winAt} ou mais, ganha a partida` : null,
+            ]
+              .filter(Boolean)
+              .join('; ')
+              .replace(/^./, (c) => c.toUpperCase()),
+            status: s('doubles'),
+          },
+        ]
+      : []),
     ...(rules.openWithDouble
       ? [{ key: 'openWithDouble', label: 'Sair de carroça', value: 'Toda rodada começa com uma carroça; sem carroça, sai o próximo que tiver', status: s('openWithDouble') ?? ('pending' as const) }]
       : []),

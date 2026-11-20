@@ -16,7 +16,15 @@ export interface Move {
 }
 
 export type GameEvent =
-  | { readonly kind: 'round-start'; readonly round: number; readonly starter: number; readonly mustOpenWith: string | null; readonly mustOpenDouble?: boolean }
+  | {
+      readonly kind: 'round-start';
+      readonly round: number;
+      readonly starter: number;
+      readonly mustOpenWith: string | null;
+      readonly mustOpenDouble?: boolean;
+      /** Quem recebeu carroças demais e forçou embaralhar de novo (uma entrada por redistribuição). */
+      readonly redeals?: readonly { readonly seat: number; readonly doubles: number }[];
+    }
   | { readonly kind: 'play'; readonly seat: number; readonly tile: Tile; readonly arm: ArmId | 'root'; readonly turn: number; readonly endsSum: number }
   | { readonly kind: 'draw'; readonly seat: number; readonly turn: number; readonly tileId: string | null }
   | { readonly kind: 'pass'; readonly seat: number; readonly turn: number; readonly openValues: readonly number[] }
@@ -27,7 +35,8 @@ export type GameEvent =
 
 export interface RoundResult {
   readonly round: number;
-  readonly type: 'domino' | 'blocked';
+  /** 'carrocas': ganhou na distribuição por ter carroças demais (ex.: cinco). */
+  readonly type: 'domino' | 'blocked' | 'carrocas';
   readonly winnerSeat: number | null;
   readonly winnerSide: number | null;
   readonly batida: BatidaType | null;

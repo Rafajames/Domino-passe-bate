@@ -36,6 +36,7 @@ export const PASSE_BATE_PB: RuleSet = {
   nextRoundStarter: 'round-winner',
   spinner: false,
   targetScore: 6,
+  doubles: { redealAt: 4, winAt: 5 },
   passeBate: { ...basePasseBate, batidaPoints: { ...basePasseBate.batidaPoints }, blocked: { ...basePasseBate.blocked } },
   allFives: { ...baseAllFives },
   assists: { ...defaultAssists },
@@ -102,6 +103,7 @@ const passeBateStatus: Record<string, RuleStatus> = {
   targetScore: 'confirmed',
   'passeBate.batidaPoints': 'regional',
   'passeBate.blocked': 'confirmed',
+  doubles: 'confirmed',
 };
 
 export const BUILTIN_PROFILES: readonly RuleProfile[] = [
@@ -109,7 +111,7 @@ export const BUILTIN_PROFILES: readonly RuleProfile[] = [
     id: 'pb-paraiba',
     name: 'Passe e Bate — Paraíba',
     mode: 'passe-bate',
-    version: 3,
+    version: 4,
     builtIn: true,
     description:
       'Dominó tradicional em duplas, sem dorme. Batidas regionais paraibanas: simples 1, carroça 2, lá e lô 3, lá e lô de carroça 6.',
@@ -123,7 +125,7 @@ export const BUILTIN_PROFILES: readonly RuleProfile[] = [
     id: 'pb-paraiba-quadrada-4',
     name: 'Passe e Bate — Quadrada vale 4',
     mode: 'passe-bate',
-    version: 3,
+    version: 4,
     builtIn: true,
     basedOn: 'pb-paraiba',
     description: 'Variação registrada em que a batida quadrada (lá e lô de carroça) vale 4 pontos.',

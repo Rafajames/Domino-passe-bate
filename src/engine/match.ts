@@ -56,6 +56,7 @@ export function dealRound(
   const deck = shuffle(fullSet(6), rng);
   const hands: Tile[][] = [];
   let rest: Tile[];
+  const redeals: { seat: number; doubles: number }[] = [];
   if (presetHands) {
     validatePresetHands(rules, presetHands, sizes);
     presetHands.forEach((h) => hands.push(h.slice()));
@@ -64,9 +65,13 @@ export function dealRound(
   } else {
     let order = deck;
     // "Sair de carroça": se nenhuma mão tiver carroça, embaralha de novo (determinístico).
-    for (let attempt = 0; attempt < 50; attempt++) {
+    for (let attempt = 0; attempt < 200; attempt++) {
       const dealt = sizes.map((n, s) => order.slice(offsets[s], (offsets[s] ?? 0) + n));
-      if (!rules.openWithDouble || dealt.some((h) => h.some((t) => t.a === t.b))) break;
+      const noDouble = rules.openWithDouble && !dealt.some((h) => h.some((t) => t.a === t.b));
+      // Carroças demais (ex.: quatro): embaralha de novo, como na mesa.
+      const redealSeat = needsRedeal(rules, dealt);
+      if (redealSeat !== null && attempt < 199) redeals.push({ seat: redealSeat, doubles: countDoubles(dealt[redealSeat] ?? []) });
+      if ((!noDouble && redealSeat === null) || attempt === 199) break;
       order = shuffle(fullSet(6), rng);
     }
     sizes.forEach((n, s) => hands.push(order.slice(offsets[s], (offsets[s] ?? 0) + n)));
@@ -124,8 +129,54 @@ export function dealRound(
     mustOpenWith,
     mustOpenDouble,
     pendingClaim: null,
-    events: [{ kind: 'round-start', round: index, starter, mustOpenWith, mustOpenDouble }],
+    events: [{ kind: 'round-start', round: index, starter, mustOpenWith, mustOpenDouble, ...(redeals.length ? { redeals } : {}) }],
     result: null,
+  };
+}
+
+export const countDoubles = (hand: readonly Tile[]): number => hand.filter((t) => t.a === t.b).length;
+
+/** Assento cuja mão obriga a embaralhar de novo (ex.: exatamente quatro carroças), ou null. */
+export function needsRedeal(rules: RuleSet, hands: readonly (readonly Tile[])[]): number | null {
+  const r = rules.doubles;
+  if (!r?.redealAt) return null;
+  const idx = hands.findIndex((h) => {
+    const n = countDoubles(h);
+    return n >= r.redealAt! && (r.winAt === null || n < r.winAt);
+  });
+  return idx >= 0 ? idx : null;
+}
+
+/** Assento que ganhou na distribuição por ter carroças suficientes (ex.: cinco), ou null. */
+export function doublesWinner(rules: RuleSet, hands: readonly (readonly Tile[])[]): number | null {
+  const w = rules.doubles?.winAt;
+  if (!w) return null;
+  const idx = hands.findIndex((h) => countDoubles(h) >= w);
+  return idx >= 0 ? idx : null;
+}
+
+/** Aplica a vitória por carroças logo após a distribuição. */
+function settleDeal(match: MatchState): MatchState {
+  const rules = match.frozen.rules;
+  const seat = doublesWinner(rules, match.round.hands);
+  if (seat === null) return match;
+  const side = sideOf(seat, rules);
+  const result: RoundResult = {
+    round: match.round.index,
+    type: 'carrocas',
+    winnerSeat: seat,
+    winnerSide: side,
+    batida: null,
+    points: 0,
+    pipCounts: match.round.hands.map(handPips),
+    hands: match.round.hands,
+  };
+  return {
+    ...match,
+    round: { ...match.round, result, events: [...match.round.events, { kind: 'round-end', result }] },
+    history: [...match.history, result],
+    status: 'finished',
+    winnerSide: side,
   };
 }
 
@@ -143,7 +194,7 @@ export function createMatch({ id, frozen, players, seed, now = new Date(), prese
   const rules = frozen.rules;
   if (players.length !== rules.players) throw new Error('Quantidade de jogadores não confere com as regras.');
   const handSizes = isBurrinha(rules) ? initialHandSizes(rules) : undefined;
-  return {
+  return settleDeal({
     handSizes,
     id,
     seed,
@@ -157,7 +208,7 @@ export function createMatch({ id, frozen, players, seed, now = new Date(), prese
     status: 'playing',
     winnerSide: null,
     startedAt: now.toISOString(),
-  };
+  });
 }
 
 // ---------------------------------------------------------------- consultas
@@ -411,13 +462,13 @@ export function startNextRound(match: MatchState, presetHands?: readonly (readon
   const winnerSeat = prev.result?.winnerSeat ?? blockedWinnerSeat(match);
   const round = dealRound(match.frozen.rules, match.seed, prev.index + 1, { starter: prev.starter, winnerSeat }, presetHands, match.handSizes);
   const archived = archiveRound(match);
-  return {
+  return settleDeal({
     ...match,
     round,
     status: 'playing',
     archive: archived ? [...(match.archive ?? []), archived] : match.archive,
     roundStartScores: match.scores,
-  };
+  });
 }
 
 /** No jogo trancado, inicia a próxima rodada o jogador de menor mão do lado vencedor. */

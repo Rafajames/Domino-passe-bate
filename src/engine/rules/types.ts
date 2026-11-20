@@ -115,6 +115,13 @@ export interface RuleSet {
   allFives: AllFivesRules;
   /** Só para a modalidade burrinha. */
   burrinha?: BurrinhaRules;
+  /**
+   * Carroças na mão ao distribuir (regra do usuário para a Passe e Bate):
+   * - `redealAt`: com essa quantidade, embaralha e distribui de novo;
+   * - `winAt`: com essa quantidade ou mais, o jogador ganha a partida na hora.
+   * null = desligado. Ausente em dados antigos = desligado.
+   */
+  doubles?: { redealAt: number | null; winAt: number | null };
   assists: Assists;
 }
 

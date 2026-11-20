@@ -3,7 +3,8 @@ import { decideClaim } from '../ai/bots';
 import { decideTurnAsync } from '../ai/async';
 import type { ArmId } from '../engine/board';
 import type { Dir } from '../ui/board/layout';
-import { applyAction, createMatch, startNextRound } from '../engine/match';
+import { applyAction, countDoubles, createMatch, needsRedeal, startNextRound } from '../engine/match';
+import { useToastStore } from '../ui/components/Toast';
 import { buildGameRecord, type GameRecord } from '../engine/replay';
 import { createRng, randomSeed, shuffle } from '../engine/rng';
 import { fullSet, type Tile } from '../engine/tiles';
@@ -51,6 +52,8 @@ export interface PickingState {
   need: number;
   /** Tamanho da mão de cada jogador (burrinha: varia por jogador). */
   sizes?: number[];
+  /** Mãos já sorteadas para os bots no momento de confirmar. */
+  chosenHands?: Tile[][];
   shuffles: number;
   pending: { kind: 'new'; profile: RuleProfile; rules: RuleSet; difficulty: BotDifficulty; extraHumans?: LocalHuman[] } | { kind: 'next' };
 }
@@ -331,15 +334,27 @@ export const useGame = create<GameState>((set, get) => {
     confirmPick: () => {
       const p = get().picking;
       if (!p || p.chosen.length !== p.need) return;
+      const r = p.pending.kind === 'new' ? p.pending.rules : get().match?.frozen.rules;
+      if (r) {
+        const hands = handsFromPicks(p, r.players, r.handSize);
+        const seat = needsRedeal(r, hands);
+        if (seat !== null) {
+          const name = seat === get().viewSeat ? 'Você' : (get().match?.players[seat]?.name ?? `Jogador ${seat + 1}`);
+          useToastStore.getState().show(`${name} veio com ${countDoubles(hands[seat] ?? [])} carroças: embaralhando de novo.`);
+          beginPicking(r, p.pending, p.sizes);
+          return;
+        }
+        p.chosenHands = hands;
+      }
       if (p.pending.kind === 'new') {
         const { profile, rules, difficulty, extraHumans } = p.pending;
-        createSolo(profile, rules, difficulty, handsFromPicks(p, rules.players, rules.handSize), extraHumans);
+        createSolo(profile, rules, difficulty, p.chosenHands ?? handsFromPicks(p, rules.players, rules.handSize), extraHumans);
       } else {
         const m = get().match;
         if (!m || m.status !== 'round-over') return;
         const r = m.frozen.rules;
         set({ picking: null });
-        commit(startNextRound(m, handsFromPicks(p, r.players, r.handSize)));
+        commit(startNextRound(m, p.chosenHands ?? handsFromPicks(p, r.players, r.handSize)));
       }
     },
     difficulty: 'normal',

@@ -235,3 +235,40 @@ describe('embaralhar e escolher / cemitério', () => {
     expect(m.round.mustOpenWith).toBe('5-5');
   });
 });
+
+describe('carroças na distribuição (Passe e Bate)', () => {
+  const p = () => BUILTIN_PROFILES.find((x) => x.id === 'pb-paraiba')!;
+  const deck = () => fullSet();
+  const doubles = () => deck().filter((x) => x.a === x.b);
+  const others = () => deck().filter((x) => x.a !== x.b);
+
+  it('com cinco carroças, o jogador (e a dupla) ganha a partida na hora', () => {
+    const d = doubles();
+    const o = others();
+    const hands = [o.slice(0, 7), [...d.slice(0, 5), ...o.slice(7, 9)], [d[5]!, d[6]!, ...o.slice(9, 14)], o.slice(14, 21)];
+    const m = createMatch({ id: 'x', frozen: freezeRules(p()), players: helpersPlayers(4), seed: 1, presetHands: hands });
+    expect(m.status).toBe('finished');
+    expect(m.winnerSide).toBe(1);
+    expect(m.round.result).toMatchObject({ type: 'carrocas', winnerSeat: 1 });
+  });
+
+  it('com quatro carroças, embaralha de novo até ninguém ter quatro', () => {
+    let redealt = 0;
+    for (let seed = 1; seed <= 300; seed++) {
+      const m = matchWith('pb-paraiba', {}, seed);
+      const start = m.round.events[0];
+      if (start?.kind === 'round-start' && start.redeals?.length) redealt++;
+      for (const h of m.round.hands) expect(h.filter((x) => x.a === x.b).length).not.toBe(4);
+    }
+    expect(redealt).toBeGreaterThan(0);
+  });
+
+  it('desligada, quatro carroças não embaralham de novo', () => {
+    let four = 0;
+    for (let seed = 1; seed <= 300; seed++) {
+      const m = matchWith('pb-paraiba', { doubles: { redealAt: null, winAt: null } }, seed);
+      if (m.round.hands.some((h) => h.filter((x) => x.a === x.b).length === 4)) four++;
+    }
+    expect(four).toBeGreaterThan(0);
+  });
+});

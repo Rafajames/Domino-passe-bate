@@ -9,7 +9,7 @@
 - **Pesquisada**: padrão encontrado em fontes públicas.
 - **Pendente**: em revisão. Ou tem valor provisório configurável, ou fica desativada.
 
-## Perfil "Passe e Bate — Paraíba" (`pb-paraiba`, v3)
+## Perfil "Passe e Bate — Paraíba" (`pb-paraiba`, v4)
 
 | Regra | Valor | Status |
 |---|---|---|
@@ -18,6 +18,8 @@
 | Sem jogada | Passa a vez | Regional |
 | Saída da 1ª rodada | Quem tem a carroça de seis sai com ela | Confirmada |
 | Saída das seguintes | Quem venceu a rodada, com qualquer pedra | Confirmada |
+| Quatro carroças na mão | Embaralha e distribui de novo | Confirmada (regra do usuário, 20/11/2026) |
+| Cinco ou mais carroças na mão | Ganha a partida na hora (em duplas, a dupla) | Confirmada (regra do usuário, 20/11/2026) |
 | Sair só de carroça (opcional, desligado por padrão) | Toda rodada começa com uma carroça. Sem carroça, sai o próximo da roda que tiver; se ninguém tiver, embaralha de novo | Confirmada |
 | Batida simples | 1 | Regional (referência registrada) |
 | Batida de carroça | 2 | Regional |
@@ -26,7 +28,7 @@
 | Jogo trancado | Menor mão individual vence e leva 1 ponto. Empate entre duplas: ninguém pontua | Confirmada |
 | Meta da partida | 6 pontos | Confirmada |
 
-### Variação "Quadrada vale 4" (`pb-paraiba-quadrada-4`, v3)
+### Variação "Quadrada vale 4" (`pb-paraiba-quadrada-4`, v4)
 
 É igual ao perfil acima, mas a lá e lô de carroça vale **4**.
 

@@ -131,6 +131,24 @@ export function EditorScreen({ mode, profileId }: { mode: GameMode; profileId: s
                 ]}
               />
             </RuleRow>
+            {!isBurrinha && (
+              <>
+                <RuleRow label="Quatro carroças: embaralha de novo" hint="Quem receber quatro carroças mostra e as pedras são distribuídas de novo." badge={badge('doubles')} inline>
+                  <Switch
+                    label="Quatro carroças: embaralha de novo"
+                    checked={!!rules.doubles?.redealAt}
+                    onChange={(on) => patch({ doubles: { redealAt: on ? 4 : null, winAt: rules.doubles?.winAt ?? null } })}
+                  />
+                </RuleRow>
+                <RuleRow label="Cinco carroças: ganha a partida" hint="Quem receber cinco ou mais carroças ganha a partida na hora (em duplas, a dupla)." inline>
+                  <Switch
+                    label="Cinco carroças: ganha a partida"
+                    checked={!!rules.doubles?.winAt}
+                    onChange={(on) => patch({ doubles: { redealAt: rules.doubles?.redealAt ?? null, winAt: on ? 5 : null } })}
+                  />
+                </RuleRow>
+              </>
+            )}
             <RuleRow
               label="Sair só de carroça"
               hint="Toda rodada começa com uma carroça. Sem carroça, sai o próximo da roda que tiver; se ninguém tiver, embaralha de novo."

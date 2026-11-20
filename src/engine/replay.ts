@@ -72,6 +72,11 @@ export function replayRound(frozen: FrozenRules, players: readonly PlayerSlot[],
     winnerSide: null,
     startedAt: '',
   };
+  if (round.result?.type === 'carrocas') {
+    // Vitória na distribuição: não houve jogadas.
+    const done: MatchState = { ...match, status: 'finished', round: { ...match.round, result: round.result } };
+    return [{ match: done, event: null }];
+  }
   const steps: ReplayStep[] = [{ match, event: null }];
   for (const action of actionsFromEvents(round.events)) {
     const before = match.round.events.length;

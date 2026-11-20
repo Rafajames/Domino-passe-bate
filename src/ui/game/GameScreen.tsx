@@ -25,7 +25,7 @@ import { HistoryPanel } from './HistoryPanel';
 import { RoundEndSheet } from './RoundEndSheet';
 import { Scoreboard } from './Scoreboard';
 import { Seat, type SeatPosition } from './Seat';
-import { eventText, tileName } from './text';
+import { eventText, redealText, tileName } from './text';
 import { useGameSounds } from './useGameSounds';
 import { decideTurnAsync } from '../../ai/async';
 import { playerView } from '../../engine/view';
@@ -81,6 +81,13 @@ export function GameScreen() {
   }, [error, toast]);
 
   useGameSounds(match, HUMAN_SEAT);
+
+  // Quatro carroças: avisa que as pedras foram embaralhadas de novo.
+  const roundKey = match ? `${match.id}:${match.round.index}` : '';
+  useEffect(() => {
+    const start = match?.round.events[0];
+    if (start?.kind === 'round-start' && start.redeals?.length && match) toast(redealText(start.redeals, match.players).trim());
+  }, [roundKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Mostra o resumo do fim de rodada depois da animação da última pedra.
   const status = match?.status;
