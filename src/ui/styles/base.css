@@ -358,3 +358,27 @@ textarea.input {
   accent-color: var(--brass);
   min-height: var(--touch);
 }
+
+.update-banner {
+  position: fixed;
+  left: 50%;
+  top: calc(64px + env(safe-area-inset-top));
+  transform: translateX(-50%);
+  z-index: 40; /* abaixo dos painéis (sheets) para nunca cobrir botões */
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  max-width: calc(100vw - 16px);
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  background: var(--surface-3);
+  border: 1px solid var(--brass);
+  box-shadow: var(--shadow-3);
+  font-size: var(--fs-sm);
+  animation: fade var(--dur-med);
+}
+.update-banner .muted {
+  font-size: var(--fs-xs);
+}

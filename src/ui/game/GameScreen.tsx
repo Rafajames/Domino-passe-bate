@@ -6,7 +6,7 @@ import { hasValue, tileFromId } from '../../engine/tiles';
 import type { ArmId } from '../../engine/board';
 import type { Dir } from '../board/layout';
 import type { GameEvent } from '../../engine/types';
-import { useGame } from '../../state/gameStore';
+import { canSkipToEnd, useGame } from '../../state/gameStore';
 import { HandoffCover } from './HandoffCover';
 import { ChatSheet } from './ChatSheet';
 import { useOnline } from '../../state/onlineStore';
@@ -71,7 +71,8 @@ export function GameScreen() {
   const [handEdit, setHandEdit] = useState(false);
   const selectedId = useGame((s) => s.selectedTileId);
   const error = useGame((s) => s.error);
-  const { select, play, draw, pass, claim, nextRound, quit, startSolo, difficulty } = useGame.getState();
+  const fastForward = useGame((s) => s.fastForward);
+  const { select, play, draw, pass, claim, nextRound, quit, startSolo, difficulty, skipToEnd } = useGame.getState();
   const reset = useNav((s) => s.reset);
   const go = useNav((s) => s.go);
   const getProfile = useProfiles((s) => s.get);
@@ -214,7 +215,7 @@ export function GameScreen() {
     else if (!r.board.root && r.mustOpenDouble) statusText = 'Você sai — escolha uma carroça';
     else if (highlight && moves.length === 0) statusText = canBuy ? 'Sem jogada — compre do dorme' : 'Sem jogada — passe a vez';
     else statusText = selectedId ? 'Toque na ponta para jogar' : 'Sua vez — escolha uma pedra';
-  } else if (rules.mode === 'burrinha' && hand.length === 0) statusText = `Você bateu! Vez de ${turnPlayer?.name ?? ''}`;
+  } else if (rules.mode === 'burrinha' && hand.length === 0) statusText = fastForward ? 'Você bateu! Acelerando até o fim…' : `Você bateu! Vez de ${turnPlayer?.name ?? ''}`;
   else statusText = `Vez de ${turnPlayer?.name ?? ''}`;
 
   const lastAnnouncement = r.events.length ? eventText(r.events[r.events.length - 1]!, match.players, rules) : '';
@@ -370,6 +371,11 @@ export function GameScreen() {
           {canBuy && (
             <button className="btn btn--sm btn--primary" onClick={draw}>
               Comprar
+            </button>
+          )}
+          {!paused && !fastForward && canSkipToEnd(match, HUMAN_SEAT) && (
+            <button className="btn btn--sm btn--primary" onClick={skipToEnd} aria-label="Pular até o fim da rodada">
+              Pular pro final
             </button>
           )}
           {canSkip && (

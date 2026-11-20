@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { hasSavedMatch, useGame } from '../../state/gameStore';
 import { useNav } from '../../state/navigation';
 import { usePlayer } from '../../state/playerStore';
@@ -6,6 +6,8 @@ import { Avatar } from '../components/Avatar';
 import { Icon } from '../components/Icon';
 import { TileSvg } from '../components/Tile';
 import { loadLastGame } from './ReplayScreen';
+import { usePwa } from '../../services/pwa';
+import { InstallSheet } from '../components/InstallSheet';
 import './menus.css';
 
 export function HomeScreen() {
@@ -14,6 +16,10 @@ export function HomeScreen() {
   const resume = useGame((s) => s.resume);
   const saved = useMemo(() => hasSavedMatch(), []);
   const lastGame = useMemo(() => loadLastGame(), []);
+  const installed = usePwa((s) => s.installed);
+  const canInstall = usePwa((s) => s.canInstall);
+  const install = usePwa((s) => s.install);
+  const [showInstall, setShowInstall] = useState(false);
 
   return (
     <main className="screen home">
@@ -53,6 +59,19 @@ export function HomeScreen() {
             <Icon name="users" size={20} /> Jogar contra bots
           </button>
         </div>
+
+        {!installed && (
+          <button
+            className="btn btn--block home__install"
+            onClick={async () => {
+              if (canInstall) await install();
+              else setShowInstall(true);
+            }}
+          >
+            <Icon name="download" size={20} /> Instalar o app no celular
+          </button>
+        )}
+        {showInstall && <InstallSheet onClose={() => setShowInstall(false)} />}
 
         <nav className="list" aria-label="Menu principal">
           <button className="list__item" onClick={() => go({ name: 'online' })}>

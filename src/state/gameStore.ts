@@ -119,6 +119,17 @@ interface GameState {
   nextRound: () => void;
   quit: () => void;
   resume: () => boolean;
+  /** Burrinha: quem já bateu pode acelerar os bots até o fim da rodada. */
+  fastForward: boolean;
+  skipToEnd: () => void;
+}
+
+/** Burrinha: o jogador deste aparelho já bateu e só restam bots com pedras na mão. */
+export function canSkipToEnd(match: MatchState | null, seat: number): boolean {
+  if (!match || match.status !== 'playing' || match.frozen.rules.mode !== 'burrinha') return false;
+  const hands = match.round.hands;
+  if ((hands[seat]?.length ?? 0) > 0) return false;
+  return match.players.every((p) => p.kind === 'bot' || (hands[p.seat]?.length ?? 0) === 0);
 }
 
 let botTimer: ReturnType<typeof setTimeout> | null = null;
@@ -153,7 +164,8 @@ export const useGame = create<GameState>((set, get) => {
   function commit(match: MatchState) {
     const prev = get().match;
     const newRound = !prev || prev.id !== match.id || prev.round.index !== match.round.index;
-    set(newRound ? { match, error: null, arrangement: {}, handOrder: [], flipped: [], paused: false } : { match, error: null });
+    set(newRound ? { match, error: null, arrangement: {}, handOrder: [], flipped: [], paused: false, fastForward: false } : { match, error: null });
+    if (match.status !== 'playing' && get().fastForward) set({ fastForward: false });
     updateHandoff(match);
     persist();
     if (get().net === 'host') netHooks.broadcast?.(match);
@@ -197,7 +209,7 @@ export const useGame = create<GameState>((set, get) => {
       const slot = m.players[pc.seat];
       const claim = decideClaim(playerView(m, pc.seat), slot?.difficulty ?? 'normal', botRng);
       if (claim) {
-        botTimer = setTimeout(() => dispatch(claim), 350);
+        botTimer = setTimeout(() => dispatch(claim), get().fastForward ? 0 : 350);
         return;
       }
     }
@@ -215,7 +227,7 @@ export const useGame = create<GameState>((set, get) => {
       const now = get().match;
       if (token !== botToken || !now || now !== m || get().paused) return;
       const base = action.type === 'draw' ? 500 : action.type === 'pass' ? 1000 : 850;
-      const wanted = base + Math.floor(botRng() * 350) + (humanClaimOpen ? 2200 : 0);
+      const wanted = get().fastForward ? 60 : base + Math.floor(botRng() * 350) + (humanClaimOpen ? 2200 : 0);
       botTimer = setTimeout(() => dispatch(action), Math.max(0, wanted - (Date.now() - started)));
     });
   }
@@ -445,10 +457,17 @@ export const useGame = create<GameState>((set, get) => {
       if (m.frozen.rules.dealMode === 'pick') beginPicking(m.frozen.rules, { kind: 'next' }, m.handSizes);
       else commit(startNextRound(m));
     },
+    fastForward: false,
+    skipToEnd: () => {
+      const { match, viewSeat, net } = get();
+      if (net === 'guest' || !canSkipToEnd(match, viewSeat)) return;
+      set({ fastForward: true, paused: false });
+      scheduleBots();
+    },
     quit: () => {
       clearBotTimer();
       removeKey(KEYS.activeMatch);
-      set({ match: null, selectedTileId: null, picking: null, handoff: null, viewSeat: HUMAN_SEAT });
+      set({ match: null, selectedTileId: null, picking: null, handoff: null, viewSeat: HUMAN_SEAT, fastForward: false });
     },
     resume: () => {
       set({ net: 'local' });

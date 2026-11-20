@@ -5,6 +5,8 @@ import { Avatar } from '../components/Avatar';
 import { Segmented, Switch } from '../components/Controls';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { MODE_LABEL } from '../rules/describe';
+import { usePwa } from '../../services/pwa';
+import { useToast } from '../components/Toast';
 import './menus.css';
 
 export function PlayerScreen() {
@@ -14,6 +16,8 @@ export function PlayerScreen() {
   const clearHistory = usePlayer((s) => s.clearHistory);
   const settings = useSettings();
   const all = statsFor(history);
+  const pwa = usePwa();
+  const toast = useToast();
 
   return (
     <main className="screen">
@@ -136,6 +140,29 @@ export function PlayerScreen() {
               </span>
               <Switch label="Reduzir animações" checked={settings.reducedMotion} onChange={(reducedMotion) => settings.set({ reducedMotion })} />
             </div>
+          </div>
+        </section>
+
+        <section>
+          <h2 className="section-title" style={{ marginBottom: 8 }}>Aplicativo</h2>
+          <div className="panel" style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <span className="list__main">
+              <span className="rule-row__label">Versão {pwa.version}</span>
+              <span className="rule-row__hint">
+                {pwa.builtAt ? `Publicada em ${new Date(pwa.builtAt).toLocaleString('pt-BR')} · ` : ''}
+                {pwa.installed ? 'Instalado' : 'No navegador'} · atualiza sozinho
+              </span>
+            </span>
+            <button
+              className="btn btn--sm"
+              disabled={pwa.checking}
+              onClick={async () => {
+                const found = await pwa.checkNow();
+                if (!found) toast('Você já está na versão mais nova.');
+              }}
+            >
+              {pwa.checking ? 'Verificando…' : 'Verificar atualizações'}
+            </button>
           </div>
         </section>
 

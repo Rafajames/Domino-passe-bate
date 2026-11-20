@@ -1,5 +1,7 @@
-/* Service worker: app shell offline. Navegação: rede primeiro; assets com hash: cache primeiro. */
-const CACHE = 'dpb-v2';
+/* Service worker: app shell offline. Navegação: rede primeiro; assets com hash: cache primeiro.
+ * Gerado no build a partir de pwa/sw-template.js: o marcador de versão muda a cada publicação,
+ * o que faz o navegador instalar o service worker novo (atualização). */
+const CACHE = 'dpb-__BUILD__';
 // Caminhos relativos ao escopo: funciona na raiz (Vercel) e em /<repo>/ (GitHub Pages).
 const ROOT = new URL('./', self.registration.scope).href;
 
@@ -17,7 +19,10 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   const req = event.request;
-  if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
+  const url = new URL(req.url);
+  if (req.method !== 'GET' || url.origin !== self.location.origin) return;
+  // Verificação de atualização: sempre da rede.
+  if (url.pathname.endsWith('/version.json')) return;
   if (req.mode === 'navigate') {
     event.respondWith(
       fetch(req)
@@ -43,4 +48,9 @@ self.addEventListener('fetch', (event) => {
         }),
     ),
   );
+});
+
+// A página pede para o service worker novo assumir já.
+self.addEventListener('message', (event) => {
+  if (event.data === 'skip-waiting') self.skipWaiting();
 });

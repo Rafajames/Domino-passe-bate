@@ -378,3 +378,9 @@
   font-size: var(--fs-sm);
   margin-left: var(--sp-2);
 }
+
+.home__install {
+  border-style: dashed;
+  border-color: var(--brass);
+  color: var(--brass-strong);
+}
