@@ -3,6 +3,37 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <script>
+      // Celular abrindo o app com layout de computador (modo "site para computador" do Chrome
+      // ou a janela do app instalado medida errado na abertura): força a largura da tela.
+      (function () {
+        var BASE = 'width=device-width, initial-scale=1, viewport-fit=cover';
+        function fit() {
+          var meta = document.querySelector('meta[name=viewport]');
+          if (!meta || !window.screen) return;
+          var touch = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+          var sw = screen.width;
+          if (touch && sw > 0 && sw < 760 && window.innerWidth > sw * 1.25) {
+            meta.setAttribute('content', 'width=' + sw + ', initial-scale=1, viewport-fit=cover');
+          } else if (meta.getAttribute('content') !== BASE && window.innerWidth <= sw * 1.25) {
+            meta.setAttribute('content', BASE);
+          }
+        }
+        fit();
+        window.addEventListener('load', function () {
+          // Reaplica a tag depois da abertura: alguns Android medem a janela do app só depois.
+          var meta = document.querySelector('meta[name=viewport]');
+          if (meta) {
+            var c = meta.getAttribute('content');
+            meta.setAttribute('content', c + ',');
+            meta.setAttribute('content', c);
+          }
+          fit();
+        });
+        window.addEventListener('orientationchange', function () { setTimeout(fit, 300); });
+        window.addEventListener('resize', fit);
+      })();
+    </script>
     <meta name="theme-color" content="#0c1412" />
     <meta name="description" content="Dominó Passe e Bate e All Fives com regras regionais configuráveis. Jogue contra bots em quatro níveis." />
     <link rel="manifest" href="/manifest.webmanifest" />
