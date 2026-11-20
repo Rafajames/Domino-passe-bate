@@ -1,5 +1,10 @@
 import { useEffect } from 'react';
 import { configureHaptics, configureSound, unlockAudio } from './services/sound';
+import { justUpdatedFrom, setReloadGuard, usePwa } from './services/pwa';
+import { useGame } from './state/gameStore';
+import { useOnline } from './state/onlineStore';
+import { UpdateBanner } from './ui/components/UpdateBanner';
+import { useToastStore } from './ui/components/Toast';
 import { useNav } from './state/navigation';
 import { useSettings } from './state/settingsStore';
 import { TileDefs } from './ui/components/Tile';
@@ -25,6 +30,26 @@ export function App() {
   const volume = useSettings((s) => s.volume);
 
   const haptics = useSettings((s) => s.haptics);
+  const matchStatus = useGame((s) => s.match?.status ?? null);
+  const onlineRole = useOnline((s) => s.role);
+  const updateReady = usePwa((s) => s.updateReady);
+
+  // Atualização automática: só recarrega quando não há partida em andamento nem sala online.
+  const safeToReload = !(screen.name === 'game' && matchStatus === 'playing') && onlineRole === null && screen.name !== 'online';
+  useEffect(() => {
+    setReloadGuard(() => {
+      const nav = useNav.getState().current();
+      const playing = nav.name === 'game' && useGame.getState().match?.status === 'playing';
+      return !playing && useOnline.getState().role === null && nav.name !== 'online';
+    });
+  }, []);
+  useEffect(() => {
+    if (updateReady && safeToReload) usePwa.getState().applyUpdate();
+  }, [updateReady, safeToReload]);
+  useEffect(() => {
+    const from = justUpdatedFrom();
+    if (from) useToastStore.getState().show(`Jogo atualizado para a versão ${usePwa.getState().version}.`);
+  }, []);
   useEffect(() => configureSound({ enabled: soundEnabled, volume }), [soundEnabled, volume]);
   useEffect(() => configureHaptics(haptics), [haptics]);
 
@@ -75,6 +100,7 @@ export function App() {
     <>
       <TileDefs />
       {content}
+      {!safeToReload && <UpdateBanner />}
       <ToastHost />
     </>
   );
