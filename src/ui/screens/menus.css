@@ -384,3 +384,8 @@
   border-color: var(--brass);
   color: var(--brass-strong);
 }
+
+.home__update {
+  margin-top: var(--sp-2);
+  color: var(--text-2);
+}

@@ -7,6 +7,7 @@ import { Icon } from '../components/Icon';
 import { TileSvg } from '../components/Tile';
 import { loadLastGame } from './ReplayScreen';
 import { usePwa } from '../../services/pwa';
+import { useToast } from '../components/Toast';
 import { InstallSheet } from '../components/InstallSheet';
 import './menus.css';
 
@@ -20,6 +21,9 @@ export function HomeScreen() {
   const canInstall = usePwa((s) => s.canInstall);
   const install = usePwa((s) => s.install);
   const [showInstall, setShowInstall] = useState(false);
+  const toast = useToast();
+  const checking = usePwa((s) => s.checking);
+  const checkNow = usePwa((s) => s.checkNow);
 
   return (
     <main className="screen home">
@@ -114,6 +118,17 @@ export function HomeScreen() {
             </span>
           </button>
         </nav>
+
+        <button
+          className="btn btn--block home__update"
+          disabled={checking}
+          onClick={async () => {
+            const found = await checkNow();
+            if (!found) toast('Você já está na versão mais nova.');
+          }}
+        >
+          <Icon name="download" size={18} /> {checking ? 'Verificando…' : 'Atualizar o jogo'}
+        </button>
       </div>
     </main>
   );
