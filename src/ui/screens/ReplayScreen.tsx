@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { replayRound, type GameRecord } from '../../engine/replay';
-import { sideOf } from '../../engine/scoring';
 import { handPips } from '../../engine/tiles';
 import { KEYS, readJSON } from '../../services/storage';
 import { Icon } from '../components/Icon';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { TileSvg } from '../components/Tile';
 import { BoardView } from '../game/BoardView';
-import { sideColor } from '../game/colors';
+import { seatColor, sideColor } from '../game/colors';
 import { eventText, redealText, resultText, sideName, tileName } from '../game/text';
 import { MODE_LABEL } from '../rules/describe';
 import '../game/game.css';
@@ -120,6 +119,7 @@ export function ReplayScreen({ initialRound }: { initialRound?: number }) {
             lastTurn={lastPlay && lastPlay.kind === 'play' ? lastPlay.turn : null}
             scorePopup={null}
             arrangement={record.arrangements?.[round.index] ?? {}}
+            colorBySeat
             organizing={false}
             onArrange={noop}
           />
@@ -133,7 +133,7 @@ export function ReplayScreen({ initialRound }: { initialRound?: number }) {
       <section className="replay__hands" aria-label="Mãos dos jogadores">
         {record.players.map((p, seat) => {
           const hand = m.round.hands[seat] ?? [];
-          const color = sideColor(sideOf(seat, rules), rules.teams);
+          const color = seatColor(seat);
           return (
             <div key={seat} className={`replay__hand ${m.status === 'playing' && m.round.turn === seat ? 'is-turn' : ''}`} style={{ ['--side' as string]: color }}>
               <span className="replay__who">

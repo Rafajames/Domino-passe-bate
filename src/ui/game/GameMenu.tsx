@@ -22,6 +22,7 @@ export function GameMenu({
   const tableTheme = useSettings((s) => s.tableTheme);
   const set = useSettings((s) => s.set);
   const soundEnabled = useSettings((s) => s.soundEnabled);
+  const tileColors = useSettings((s) => s.tileColors);
   const f = match.frozen;
   return (
     <Sheet title="Partida" onClose={onClose}>
@@ -50,6 +51,10 @@ export function GameMenu({
             ))}
           </section>
         )}
+        <section className="rule-row rule-row--inline" style={{ padding: 0, border: 0 }}>
+          <span className="rule-row__label">Cor de quem jogou</span>
+          <Switch label="Cor de quem jogou" checked={tileColors} onChange={(v) => set({ tileColors: v })} />
+        </section>
         <section className="rule-row rule-row--inline" style={{ padding: 0, border: 0 }}>
           <span className="rule-row__label">Sons</span>
           <Switch label="Sons" checked={soundEnabled} onChange={(v) => set({ soundEnabled: v })} />

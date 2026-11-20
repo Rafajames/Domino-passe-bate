@@ -38,9 +38,11 @@ export interface TileShapeProps {
   first: number;
   second: number;
   className?: string;
+  /** Cor de quem jogou: contorno e pino central. */
+  accent?: string;
 }
 
-export const TileShape = memo(function TileShape({ x, y, w, h, first, second, className }: TileShapeProps) {
+export const TileShape = memo(function TileShape({ x, y, w, h, first, second, className, accent }: TileShapeProps) {
   const horizontal = w > h;
   const left = x - w / 2;
   const top = y - h / 2;
@@ -49,12 +51,23 @@ export const TileShape = memo(function TileShape({ x, y, w, h, first, second, cl
     <g className={`tile ${className ?? ''}`}>
       <rect x={left + inset} y={top + inset + 0.07} width={w - inset * 2} height={h - inset * 2} rx={0.15} className="tile__edge" />
       <rect x={left + inset} y={top + inset} width={w - inset * 2} height={h - inset * 2} rx={0.15} className="tile__face" />
+      {accent && (
+        <rect
+          x={left + inset + 0.04}
+          y={top + inset + 0.04}
+          width={w - inset * 2 - 0.08}
+          height={h - inset * 2 - 0.08}
+          rx={0.12}
+          className="tile__accent"
+          style={{ stroke: accent }}
+        />
+      )}
       {horizontal ? (
         <line x1={x} y1={top + 0.14} x2={x} y2={top + h - 0.14} className="tile__divider" />
       ) : (
         <line x1={left + 0.14} y1={y} x2={left + w - 0.14} y2={y} className="tile__divider" />
       )}
-      <circle cx={x} cy={y} r={0.055} className="tile__pin" />
+      <circle cx={x} cy={y} r={accent ? 0.085 : 0.055} className="tile__pin" style={accent ? { fill: accent } : undefined} />
       <Half value={first} ox={left} oy={top} horizontal={horizontal} />
       <Half value={second} ox={horizontal ? left + 1 : left} oy={horizontal ? top : top + 1} horizontal={horizontal} />
     </g>
@@ -67,12 +80,14 @@ export function TileSvg({
   unit,
   horizontal = false,
   label,
+  accent,
 }: {
   first: number;
   second: number;
   unit: number;
   horizontal?: boolean;
   label?: string;
+  accent?: string;
 }) {
   const w = horizontal ? 2 : 1;
   const h = horizontal ? 1 : 2;
@@ -85,7 +100,7 @@ export function TileSvg({
       aria-label={label ?? `Pedra ${first} e ${second}`}
       className="tile-svg"
     >
-      <TileShape x={w / 2} y={h / 2} w={w} h={h} first={first} second={second} />
+      <TileShape x={w / 2} y={h / 2} w={w} h={h} first={first} second={second} accent={accent} />
     </svg>
   );
 }

@@ -16,6 +16,10 @@ interface Props {
   onTap: (tileId: string) => void;
   onFlip: (tileId: string) => void;
   onReorder: (ids: string[]) => void;
+  /** Pedras em pé (padrão) ou deitadas. */
+  orientation?: 'vertical' | 'horizontal';
+  /** Multiplicador de tamanho escolhido pelo jogador. */
+  scale?: number;
 }
 
 const DRAG_THRESHOLD = 8;
@@ -27,18 +31,24 @@ export function orderedHand(hand: readonly Tile[], order: readonly string[]): Ti
   return [...known, ...rest];
 }
 
-export function HandRack({ hand, order, flipped, selectedId, playableIds, myTurn, organizing, onTap, onFlip, onReorder }: Props) {
+export function HandRack({ hand, order, flipped, selectedId, playableIds, myTurn, organizing, onTap, onFlip, onReorder, orientation = 'vertical', scale = 1 }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const rowRef = useRef<HTMLDivElement>(null);
   const { w } = useElementSize(ref);
   const tiles = orderedHand(hand, order);
   const n = Math.max(7, tiles.length);
+  const horizontal = orientation === 'horizontal';
   const maxByHeight = typeof window !== 'undefined' ? Math.max(22, window.innerHeight * 0.075) : 48;
-  const unit = Math.max(22, Math.min(48, maxByHeight, w > 0 ? (w - 24) / (n * 1.22) : 40));
+  // Deitadas: duas fileiras quando não cabem numa só.
+  const perRow = horizontal ? Math.ceil(n / (n > 4 ? 2 : 1)) : n;
+  const widthPerTile = horizontal ? 2.12 : 1.22;
+  const fitUnit = w > 0 ? (w - 24) / (perRow * widthPerTile) : 40;
+  const unit = Math.max(18, Math.min(64, maxByHeight * scale * (horizontal ? 0.75 : 1), fitUnit * scale, 48 * scale));
 
   // Arrastar para reordenar (toque ou mouse). Um toque sem arrastar = seleção.
   const [drag, setDrag] = useState<{ id: string; dx: number; preview: string[] } | null>(null);
   const start = useRef<{ id: string; x: number; dragging: boolean } | null>(null);
+  const clientY = useRef(0);
 
   function targetIndex(clientX: number, ids: string[], dragId: string): number {
     const row = rowRef.current;
@@ -47,17 +57,20 @@ export function HandRack({ hand, order, flipped, selectedId, playableIds, myTurn
     let idx = 0;
     for (const el of els) {
       const r = el.getBoundingClientRect();
-      if (clientX > r.left + r.width / 2) idx++;
+      const before = clientY.current > r.bottom || (clientY.current >= r.top && clientX > r.left + r.width / 2);
+      if (before) idx++;
     }
     return idx;
   }
 
   function onPointerDown(e: ReactPointerEvent, id: string) {
+    clientY.current = e.clientY;
     start.current = { id, x: e.clientX, dragging: false };
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
   }
 
   function onPointerMove(e: ReactPointerEvent) {
+    clientY.current = e.clientY;
     const s = start.current;
     if (!s) return;
     const dx = e.clientX - s.x;
@@ -87,7 +100,7 @@ export function HandRack({ hand, order, flipped, selectedId, playableIds, myTurn
   const shown = drag ? drag.preview.map((id) => tiles.find((t) => t.id === id)!).filter(Boolean) : tiles;
 
   return (
-    <div className={`hand ${organizing ? 'hand--organizing' : ''}`} ref={ref} role="toolbar" aria-label="Suas pedras">
+    <div className={`hand ${organizing ? 'hand--organizing' : ''} ${horizontal ? 'hand--horizontal' : ''}`} ref={ref} role="toolbar" aria-label="Suas pedras">
       <div className="hand__row" ref={rowRef}>
         {shown.map((t) => {
           const playable = playableIds ? playableIds.has(t.id) : true;
@@ -115,7 +128,7 @@ export function HandRack({ hand, order, flipped, selectedId, playableIds, myTurn
               aria-pressed={selected}
               aria-label={`Pedra ${t.a} e ${t.b}${organizing ? ', toque para girar, arraste para mudar de lugar' : myTurn && playableIds ? (playable ? ', jogável' : ', não encaixa') : ''}`}
             >
-              <TileSvg first={isFlipped ? t.b : t.a} second={isFlipped ? t.a : t.b} unit={unit} />
+              <TileSvg first={isFlipped ? t.b : t.a} second={isFlipped ? t.a : t.b} unit={unit} horizontal={horizontal} />
             </button>
           );
         })}

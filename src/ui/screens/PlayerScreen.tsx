@@ -117,6 +117,13 @@ export function PlayerScreen() {
             )}
             <div className="rule-row rule-row--inline">
               <span className="list__main">
+                <span className="rule-row__label">Cor de quem jogou</span>
+                <span className="rule-row__hint">Cada pedra na mesa fica com a cor do jogador que a colocou.</span>
+              </span>
+              <Switch label="Cor de quem jogou" checked={settings.tileColors} onChange={(tileColors) => settings.set({ tileColors })} />
+            </div>
+            <div className="rule-row rule-row--inline">
+              <span className="list__main">
                 <span className="rule-row__label">Vibração</span>
                 <span className="rule-row__hint">Ao chegar a sua vez, ao pontuar e no fim da rodada (Android).</span>
               </span>

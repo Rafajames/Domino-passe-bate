@@ -16,9 +16,10 @@ import { useSettings } from '../../state/settingsStore';
 import { PickPhase } from './PickPhase';
 import { Icon } from '../components/Icon';
 import { useToast } from '../components/Toast';
+import { Segmented } from '../components/Controls';
 import { BoardView, type SlotTarget } from './BoardView';
 import { ClaimBar } from './ClaimBar';
-import { sideColor } from './colors';
+import { seatColor, sideColor } from './colors';
 import { GameMenu } from './GameMenu';
 import { HandRack } from './HandRack';
 import { HistoryPanel } from './HistoryPanel';
@@ -64,6 +65,10 @@ export function GameScreen() {
   const { pause, unpause, setTileDir, resetArrangement, setHandOrder, sortHand, toggleFlip } = useGame.getState();
   const focusMode = useSettings((s) => s.focusMode);
   const setSettings = useSettings((s) => s.set);
+  const tileColors = useSettings((s) => s.tileColors);
+  const handOrientation = useSettings((s) => s.handOrientation);
+  const handScale = useSettings((s) => s.handScale);
+  const [handEdit, setHandEdit] = useState(false);
   const selectedId = useGame((s) => s.selectedTileId);
   const error = useGame((s) => s.error);
   const { select, play, draw, pass, claim, nextRound, quit, startSolo, difficulty } = useGame.getState();
@@ -263,7 +268,7 @@ export function GameScreen() {
                 position={pos}
                 count={r.hands[seat]?.length ?? 0}
                 active={match.status === 'playing' && r.turn === seat}
-                teamColor={sideColor(sideOf(seat, rules), rules.teams)}
+                teamColor={tileColors ? seatColor(seat) : sideColor(sideOf(seat, rules), rules.teams)}
                 bubble={bubbleFor(seat)}
                 showBacks={pos === 'top'}
               />
@@ -284,6 +289,7 @@ export function GameScreen() {
               playSound('place');
               setTileDir(id, d);
             }}
+            colorBySeat={tileColors}
           />
           {paused && (
             <div className="pause-banner" role="status">
@@ -309,7 +315,7 @@ export function GameScreen() {
                   <span
                     key={seat}
                     className={`focus-strip__chip ${r.turn === seat ? 'is-active' : ''}`}
-                    style={{ ['--side' as string]: sideColor(sideOf(seat, rules), rules.teams) }}
+                    style={{ ['--side' as string]: tileColors ? seatColor(seat) : sideColor(sideOf(seat, rules), rules.teams) }}
                   >
                     {pl.avatar} {r.hands[seat]?.length ?? 0}
                     {bubbleFor(seat) && <em key={bubbleFor(seat)!.key}>{bubbleFor(seat)!.text}</em>}
@@ -334,11 +340,17 @@ export function GameScreen() {
       ) : (
       <section className={`game__me ${myTurn ? 'is-active' : ''}`} style={{ ['--side' as string]: sideColor(mySide, rules.teams) }}>
         <div className="game__status">
+          {tileColors && <span className="game__my-color" style={{ background: seatColor(HUMAN_SEAT) }} title="Sua cor na mesa" aria-hidden />}
           {myTurn && <span className="game__turn-dot" aria-hidden />}
           <span>{statusText}</span>
         </div>
         <div className="game__actions">
-          {myTurn && highlight && net === 'local' && moves.length > 1 && (
+          {!handEdit && (
+            <button className="btn btn--sm btn--ghost" onClick={() => setHandEdit(true)} aria-label="Arrumar minhas pedras">
+              <Icon name="sliders" size={16} /> Arrumar
+            </button>
+          )}
+          {myTurn && highlight && net === 'local' && moves.length > 1 && !handEdit && (
             <button
               className="btn btn--sm btn--ghost"
               disabled={hintBusy}
@@ -369,6 +381,35 @@ export function GameScreen() {
       </section>
       )}
 
+      {handEdit && !paused && (
+        <section className="hand-tools" aria-label="Arrumar minhas pedras">
+          <span className="hand-tools__hint">Arraste para mudar de lugar · toque para girar</span>
+          <Segmented<'vertical' | 'horizontal'>
+            label="Posição das pedras"
+            value={handOrientation}
+            onChange={(v) => setSettings({ handOrientation: v })}
+            options={[
+              { value: 'vertical', label: 'Em pé' },
+              { value: 'horizontal', label: 'Deitadas' },
+            ]}
+          />
+          <div className="stepper" role="group" aria-label="Tamanho das pedras">
+            <button aria-label="Pedras menores" disabled={handScale <= 0.7} onClick={() => setSettings({ handScale: Math.max(0.7, +(handScale - 0.15).toFixed(2)) })}>
+              <Icon name="minus" size={16} />
+            </button>
+            <output>{Math.round(handScale * 100)}%</output>
+            <button aria-label="Pedras maiores" disabled={handScale >= 1.45} onClick={() => setSettings({ handScale: Math.min(1.45, +(handScale + 0.15).toFixed(2)) })}>
+              <Icon name="plus" size={16} />
+            </button>
+          </div>
+          <button className="btn btn--sm" onClick={() => sortHand('numero')}>Por número</button>
+          <button className="btn btn--sm" onClick={() => sortHand('carrocas')}>Carroças 1º</button>
+          <button className="btn btn--sm" onClick={() => sortHand('soma')}>Pesadas 1º</button>
+          <button className="btn btn--sm btn--primary" onClick={() => setHandEdit(false)}>
+            <Icon name="check" size={16} /> Pronto
+          </button>
+        </section>
+      )}
       {claimOpen && !paused && <ClaimBar onClaim={(p) => claim(p)} onDismiss={() => setClaimHidden(r.turnNumber)} />}
 
       <HandRack
@@ -378,7 +419,9 @@ export function GameScreen() {
         selectedId={selectedId}
         playableIds={highlight && myTurn ? playable : null}
         myTurn={myTurn}
-        organizing={paused}
+        organizing={paused || handEdit}
+        orientation={handOrientation}
+        scale={handScale}
         onTap={onTapTile}
         onFlip={(id) => {
           playSound('select');

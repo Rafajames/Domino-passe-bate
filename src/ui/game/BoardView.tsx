@@ -4,6 +4,7 @@ import { hasCollision, layoutBoard, type Arrangement, type Dir } from '../board/
 import { Icon } from '../components/Icon';
 import { TileShape } from '../components/Tile';
 import { ARM_LABEL } from './text';
+import { seatColor } from './colors';
 import { useElementSize } from './useElementSize';
 
 export interface SlotTarget {
@@ -24,6 +25,8 @@ interface Props {
   /** Modo organizar (jogo pausado): tocar numa pedra da mesa muda a direção dela. */
   organizing: boolean;
   onArrange: (tileId: string, dir: Dir) => void;
+  /** Marcar cada pedra com a cor de quem a jogou. */
+  colorBySeat?: boolean;
 }
 
 const PERP: Record<Dir, Dir[]> = { E: ['N', 'S'], W: ['N', 'S'], N: ['E', 'W'], S: ['E', 'W'] };
@@ -33,7 +36,7 @@ const PAD = 0.9;
 const MIN_UNIT = 18;
 const MAX_UNIT = 64;
 
-export function BoardView({ board, targets, showValidity, onPlace, lastTurn, scorePopup, arrangement, organizing, onArrange }: Props) {
+export function BoardView({ board, targets, showValidity, onPlace, lastTurn, scorePopup, arrangement, organizing, onArrange, colorBySeat = false }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const size = useElementSize(wrapRef);
@@ -109,7 +112,7 @@ export function BoardView({ board, targets, showValidity, onPlace, lastTurn, sco
                     }
                   }}
                 >
-                  <TileShape x={t.x} y={t.y} w={t.w} h={t.h} first={t.first} second={t.second} className="board-tile board-tile--editable" />
+                  <TileShape x={t.x} y={t.y} w={t.w} h={t.h} first={t.first} second={t.second} className="board-tile board-tile--editable" accent={colorBySeat ? seatColor(t.seat) : undefined} />
                 </g>
               ) : (
                 <TileShape
@@ -121,6 +124,7 @@ export function BoardView({ board, targets, showValidity, onPlace, lastTurn, sco
                   first={t.first}
                   second={t.second}
                   className={`board-tile ${t.turn === lastTurn ? 'board-tile--last' : ''}`}
+                  accent={colorBySeat ? seatColor(t.seat) : undefined}
                 />
               ),
             )}

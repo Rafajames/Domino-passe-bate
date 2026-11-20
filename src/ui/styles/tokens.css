@@ -43,6 +43,11 @@
   --team-b-soft: rgba(116, 185, 228, 0.16);
   --team-c: #b9a0f0;
   --team-d: #9ad48a;
+  /* Cor de cada jogador (pedras na mesa e anel do avatar). Quentes = dupla 1, frias = dupla 2. */
+  --seat-0: #e8714f;
+  --seat-1: #3f97d8;
+  --seat-2: #e0a21f;
+  --seat-3: #8d72e6;
   --success: #74d39c;
   --danger: #ef6b5f;
   --warning: #f1c35b;

@@ -33,3 +33,8 @@
   stroke: rgba(226, 180, 92, 0.3);
   stroke-width: 0.03;
 }
+
+.tile__accent {
+  fill: none;
+  stroke-width: 0.07;
+}
