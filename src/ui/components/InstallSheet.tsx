@@ -14,11 +14,18 @@ export function InstallSheet({ onClose }: { onClose: () => void }) {
             <li>Escolha <strong>Adicionar à Tela de Início</strong> e confirme.</li>
           </ol>
         ) : (
-          <ol style={{ margin: 0, paddingLeft: 20, display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <li>Abra esta página no <strong>Chrome</strong>.</li>
-            <li>Toque no menu <strong>⋮</strong> (canto superior direito).</li>
-            <li>Escolha <strong>Instalar app</strong> ou <strong>Adicionar à tela inicial</strong>.</li>
-          </ol>
+          <>
+            <p style={{ margin: 0 }}>Funciona em qualquer navegador (Chrome, Brave, Samsung Internet, Firefox e outros):</p>
+            <ol style={{ margin: 0, paddingLeft: 20, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <li>
+                Abra o menu do navegador (<strong>⋮</strong> ou <strong>≡</strong>, em cima ou embaixo da tela).
+              </li>
+              <li>
+                Escolha <strong>Instalar app</strong>, <strong>Adicionar à tela inicial</strong> ou <strong>Adicionar à tela de início</strong>.
+              </li>
+              <li>Confirme. O ícone do jogo aparece na tela do celular.</li>
+            </ol>
+          </>
         )}
         <p className="muted" style={{ fontSize: 'var(--fs-sm)' }}>
           Depois de instalado, o jogo abre como um aplicativo, funciona sem internet (exceto o online) e se atualiza sozinho.
