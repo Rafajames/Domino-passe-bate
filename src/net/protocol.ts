@@ -14,6 +14,8 @@ export interface LobbySeat {
 export interface LobbyInfo {
   code: string;
   hostName: string;
+  /** Quantos convidados o anfitrião aceita pelo link. */
+  maxGuests: number;
   frozen: FrozenRules;
   seats: LobbySeat[];
   started: boolean;

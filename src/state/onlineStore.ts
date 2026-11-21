@@ -43,7 +43,11 @@ interface OnlineState {
   phase: string | null;
   via: 'p2p' | 'relay' | null;
   retry: () => void;
-  createRoom: (profile: RuleProfile, rules: RuleSet, difficulty: BotDifficulty) => Promise<void>;
+  createRoom: (profile: RuleProfile, rules: RuleSet, difficulty: BotDifficulty, maxGuests?: number) => Promise<void>;
+  /** Anfitrião: move o convidado do lugar `from` para `to` (troca se estiver ocupado). */
+  moveGuest: (from: number, to: number) => void;
+  /** Anfitrião, em duplas: coloca o convidado a favor (parceiro) ou contra (adversário). */
+  setSide: (seat: number, side: 'ally' | 'rival') => void;
   startGame: () => void;
   joinRoom: (code: string) => Promise<void>;
   acceptSeat: () => void;
@@ -134,7 +138,7 @@ const toast = (m: string) => useToastStore.getState().show(m);
 let peer: Peer | null = null;
 // Anfitrião
 const clients = new Map<string, Client>(); // por clientId
-let hostSetup: { profile: RuleProfile; rules: RuleSet; difficulty: BotDifficulty } | null = null;
+let hostSetup: { profile: RuleProfile; rules: RuleSet; difficulty: BotDifficulty; maxGuests: number } | null = null;
 // Convidado
 let hostConn: Link | null = null;
 let relayHost: RelayHost | null = null;
@@ -163,6 +167,7 @@ export const useOnline = create<OnlineState>((set, get) => {
     return {
       code: get().code ?? '',
       hostName: usePlayer.getState().player.name,
+      maxGuests: hostSetup!.maxGuests,
       frozen: freezeRules(profile, rules),
       seats: lobbySeats(),
       started: !!useGame.getState().match && get().status === 'playing',
@@ -208,6 +213,8 @@ export const useOnline = create<OnlineState>((set, get) => {
         if (!existing) return;
         if (existing.seat !== null) return;
         if (get().status === 'playing') return sendTo(existing, { t: 'error', message: 'A partida já começou.' });
+        const seated = [...clients.values()].filter((c) => c.seat !== null).length;
+        if (seated >= hostSetup!.maxGuests) return sendTo(existing, { t: 'error', message: 'A mesa está cheia.' });
         const taken = new Set([...clients.values()].map((c) => c.seat));
         const free = Array.from({ length: hostSetup!.rules.players }, (_, s) => s).find((s) => s !== 0 && !taken.has(s));
         if (free === undefined) return sendTo(existing, { t: 'error', message: 'A mesa está cheia.' });
@@ -373,11 +380,11 @@ export const useOnline = create<OnlineState>((set, get) => {
       else void get().joinRoom(c);
     },
 
-    createRoom: async (profile, rules, difficulty) => {
+    createRoom: async (profile, rules, difficulty, maxGuests) => {
       get().leave();
       leaving = false;
       set({ role: 'host', status: 'connecting', error: null, chat: [], unread: 0, mySeat: 0, phase: 'Criando a sala…', via: null });
-      hostSetup = { profile, rules: { ...rules, dealMode: 'auto' }, difficulty };
+      hostSetup = { profile, rules: { ...rules, dealMode: 'auto' }, difficulty, maxGuests: Math.max(1, Math.min(maxGuests ?? rules.players - 1, rules.players - 1)) };
       let lastErr: unknown = null;
       let code: string | null = null;
       for (let attempt = 0; attempt < 3; attempt++) {
@@ -460,6 +467,27 @@ export const useOnline = create<OnlineState>((set, get) => {
     },
 
     markChatRead: () => set({ unread: 0 }),
+
+    moveGuest: (from, to) => {
+      if (get().role !== 'host' || get().status === 'playing' || !hostSetup) return;
+      if (to < 1 || to >= hostSetup.rules.players || from === to) return;
+      const a = [...clients.values()].find((c) => c.seat === from);
+      if (!a) return;
+      const b = [...clients.values()].find((c) => c.seat === to);
+      if (b) b.seat = from;
+      a.seat = to;
+      broadcastLobby();
+    },
+
+    setSide: (seat, side) => {
+      if (get().role !== 'host' || !hostSetup?.rules.teams) return;
+      // Em duplas, os lugares pares (0 e 2) são a dupla do anfitrião.
+      const mine = seat % 2 === 0;
+      if (mine === (side === 'ally')) return;
+      const targets = side === 'ally' ? [2] : [1, 3];
+      const free = targets.find((t) => ![...clients.values()].some((c) => c.seat === t));
+      get().moveGuest(seat, free ?? targets[0]!);
+    },
 
     botForSeat: (seat) => {
       if (get().role !== 'host') return;

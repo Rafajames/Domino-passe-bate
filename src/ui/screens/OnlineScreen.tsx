@@ -1,12 +1,15 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { DIFFICULTY_LABEL } from '../../ai/bots';
+import { researchedHandSize } from '../../engine/rules/profiles';
+import type { RuleSet } from '../../engine/rules/types';
+import { validateRules } from '../../engine/rules/validate';
 import type { BotDifficulty } from '../../engine/types';
 import { useGame } from '../../state/gameStore';
 import { useNav } from '../../state/navigation';
 import { lastOnlineRoom, useOnline } from '../../state/onlineStore';
 import { useProfiles } from '../../state/profilesStore';
 import { usePlayer } from '../../state/playerStore';
-import { Segmented } from '../components/Controls';
+import { Segmented, Switch } from '../components/Controls';
 import { Icon } from '../components/Icon';
 import { RuleSummary } from '../components/RuleSummary';
 import { ScreenHeader } from '../components/ScreenHeader';
@@ -37,6 +40,31 @@ function Hub({ initialCode }: { initialCode?: string }) {
   const [difficulty, setDifficulty] = useState<BotDifficulty>('normal');
   const last = useMemo(lastOnlineRoom, []);
   const profile = all.find((p) => p.id === profileId);
+  // Ajustes da mesa por cima do perfil (null = usar o do perfil).
+  const [playersSel, setPlayersSel] = useState<2 | 3 | 4 | null>(null);
+  const [teamsSel, setTeamsSel] = useState<boolean | null>(null);
+  const [guestsSel, setGuestsSel] = useState<number | null>(null);
+  useEffect(() => {
+    setPlayersSel(null);
+    setTeamsSel(null);
+    setGuestsSel(null);
+  }, [profileId]);
+  const tableRules: RuleSet | null = useMemo(() => {
+    if (!profile) return null;
+    const r = profile.rules;
+    const players = playersSel ?? r.players;
+    const handSize =
+      players === r.players || profile.mode === 'burrinha'
+        ? r.handSize
+        : profile.mode !== 'passe-bate' && r.boneyard
+          ? researchedHandSize(players)
+          : players === 4
+            ? 7
+            : r.handSize;
+    return { ...r, players, teams: players === 4 ? (teamsSel ?? r.teams) : false, handSize };
+  }, [profile, playersSel, teamsSel]);
+  const tableErrors = tableRules ? validateRules(tableRules) : [];
+  const maxGuests = tableRules ? Math.max(1, Math.min(guestsSel ?? tableRules.players - 1, tableRules.players - 1)) : 1;
   const player = usePlayer((s) => s.player);
   const setPlayer = usePlayer((s) => s.setPlayer);
   const [name, setName] = useState(player.name === 'Você' ? '' : player.name);
@@ -94,6 +122,38 @@ function Hub({ initialCode }: { initialCode?: string }) {
             <RuleSummary rules={profile.rules} status={profile.ruleStatus} compact />
           </details>
         )}
+        {tableRules && (
+          <>
+            <div className="field">
+              <span className="field__label">Jogadores na mesa</span>
+              <Segmented<number>
+                label="Jogadores na mesa"
+                value={tableRules.players}
+                onChange={(v) => {
+                  setPlayersSel(v as 2 | 3 | 4);
+                  setGuestsSel(null);
+                }}
+                options={[2, 3, 4].map((n) => ({ value: n, label: String(n) }))}
+              />
+            </div>
+            {tableRules.players === 4 && (
+              <Switch label="Jogar em duplas (você + o jogador à sua frente)" checked={tableRules.teams} onChange={setTeamsSel} />
+            )}
+            <div className="field">
+              <span className="field__label">Amigos que podem entrar pelo link</span>
+              <Segmented<number>
+                label="Vagas para amigos"
+                value={maxGuests}
+                onChange={setGuestsSel}
+                options={Array.from({ length: tableRules.players - 1 }, (_, i) => ({ value: i + 1, label: String(i + 1) }))}
+              />
+              {maxGuests < tableRules.players - 1 && (
+                <span className="muted" style={{ fontSize: 'var(--fs-xs)' }}>Os outros {tableRules.players - 1 - maxGuests} lugar(es) ficam com bots.</span>
+              )}
+            </div>
+            {tableErrors.length > 0 && <p className="errors" role="alert">{tableErrors[0]}</p>}
+          </>
+        )}
         <div className="field">
           <span className="field__label">Bots nos lugares vazios</span>
           <Segmented<BotDifficulty>
@@ -103,7 +163,7 @@ function Hub({ initialCode }: { initialCode?: string }) {
             options={(['facil', 'normal', 'dificil', 'mestre'] as const).map((d) => ({ value: d, label: DIFFICULTY_LABEL[d] }))}
           />
         </div>
-        <button className="btn btn--primary" disabled={!profile || !nameOk} onClick={() => profile && (commitName(), createRoom(profile, profile.rules, difficulty))}>
+        <button className="btn btn--primary" disabled={!profile || !tableRules || tableErrors.length > 0 || !nameOk} onClick={() => profile && tableRules && (commitName(), createRoom(profile, tableRules, difficulty, maxGuests))}>
           <Icon name="plus" size={18} /> Criar sala
         </button>
       </section>
@@ -136,6 +196,7 @@ function Lobby() {
   const back = useNav((s) => s.back);
   const toast = useToast();
   const { role, status, code, lobby, mySeat, error, phase, via } = online;
+  const teams = !!lobby?.frozen.rules.teams;
 
   async function share() {
     if (!code) return;
@@ -194,6 +255,12 @@ function Lobby() {
 
           <section>
             <h2 className="section-title" style={{ marginBottom: 8 }}>Mesa</h2>
+            {teams && mySeat !== null && mySeat !== 0 && (
+              <p className="panel" role="status" style={{ marginBottom: 8 }}>
+                {mySeat % 2 === 0 ? `Você é parceiro de ${lobby.hostName}.` : `Você joga contra ${lobby.hostName}.`}
+              </p>
+            )}
+            {role === 'host' && <p className="muted" style={{ marginBottom: 8, fontSize: 'var(--fs-sm)' }}>Até {lobby.maxGuests} amigo(s) entram pelo link.</p>}
             <div className="list">
               {lobby.seats.map((s) => (
                 <div key={s.seat} className="list__item" style={{ cursor: 'default' }}>
@@ -204,7 +271,27 @@ function Lobby() {
                     </span>
                     <span className="list__hint">
                       {s.kind === 'host' ? 'Anfitrião' : s.kind === 'guest' ? (s.connected ? 'Conectado' : 'Desconectado') : s.kind === 'bot' ? 'Bot' : 'Vai virar bot se ninguém entrar'}
+                      {teams && ` · ${s.seat % 2 === 0 ? 'Dupla do anfitrião' : 'Dupla adversária'}`}
                     </span>
+                    {role === 'host' && s.kind === 'guest' && status !== 'playing' && (
+                      <span style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 6 }}>
+                        {teams && (
+                          <Segmented<'ally' | 'rival'>
+                            label={`Lado de ${s.name}`}
+                            value={s.seat % 2 === 0 ? 'ally' : 'rival'}
+                            onChange={(side) => online.setSide(s.seat, side)}
+                            options={[{ value: 'ally', label: 'A favor' }, { value: 'rival', label: 'Contra' }]}
+                          />
+                        )}
+                        <select className="input" aria-label={`Lugar de ${s.name}`} value={s.seat} onChange={(e) => online.moveGuest(s.seat, Number(e.target.value))}>
+                          {lobby.seats.filter((x) => x.seat !== 0).map((x) => (
+                            <option key={x.seat} value={x.seat}>
+                              Lugar {x.seat + 1}{teams ? (x.seat % 2 === 0 ? ' (parceiro)' : ' (adversário)') : ''}{x.seat !== s.seat && x.kind === 'guest' ? ` — troca com ${x.name}` : ''}
+                            </option>
+                          ))}
+                        </select>
+                      </span>
+                    )}
                   </span>
                 </div>
               ))}
