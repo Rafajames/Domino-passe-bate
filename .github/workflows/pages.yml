@@ -28,6 +28,13 @@ jobs:
       - run: npm run build
         env:
           PAGES_BASE: /${{ github.event.repository.name }}/
+          # Chave pública (pode ficar no código): liga o servidor reserva do online.
+          VITE_SUPABASE_URL: https://peebmrbbpvzmghwogtwh.supabase.co
+          VITE_SUPABASE_ANON_KEY: sb_publishable_qgLOwij8RNaLX6t6giWmSw_JqydtRny
+          # TURN dedicado (opcional): crie os secrets no GitHub para usar.
+          VITE_TURN_URL: ${{ secrets.TURN_URL }}
+          VITE_TURN_USER: ${{ secrets.TURN_USER }}
+          VITE_TURN_PASS: ${{ secrets.TURN_PASS }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

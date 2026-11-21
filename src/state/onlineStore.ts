@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { DataConnection, Peer } from 'peerjs';
+import { guestRelay, hostRelay, relayAvailable, type Link, type RelayHost } from '../net/relay';
 import { freezeRules } from '../engine/rules/freeze';
 import type { RuleProfile, RuleSet } from '../engine/rules/types';
 import type { BotDifficulty, MatchState } from '../engine/types';
@@ -22,7 +23,7 @@ import { useToastStore } from '../ui/components/Toast';
 type Status = 'idle' | 'connecting' | 'lobby' | 'playing' | 'reconnecting' | 'error';
 
 interface Client {
-  conn: DataConnection;
+  conn: Link;
   clientId: string;
   name: string;
   avatar: string;
@@ -38,6 +39,10 @@ interface OnlineState {
   chat: ChatMessage[];
   unread: number;
   error: string | null;
+  /** Etapa da conexão mostrada ao usuário enquanto conecta. */
+  phase: string | null;
+  via: 'p2p' | 'relay' | null;
+  retry: () => void;
   createRoom: (profile: RuleProfile, rules: RuleSet, difficulty: BotDifficulty) => Promise<void>;
   startGame: () => void;
   joinRoom: (code: string) => Promise<void>;
@@ -59,17 +64,52 @@ function clientId(): string {
   return id;
 }
 
+/** STUN públicos + TURN opcional (VITE_TURN_URL/USER/PASS) para redes móveis. */
+function iceServers(): RTCIceServer[] {
+  const env = import.meta.env;
+  const list: RTCIceServer[] = [
+    { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] },
+    { urls: 'stun:stun.cloudflare.com:3478' },
+    { urls: ['turn:eu-0.turn.peerjs.com:3478', 'turn:us-0.turn.peerjs.com:3478'], username: 'peerjs', credential: 'peerjsp' },
+  ];
+  if (env.VITE_TURN_URL) {
+    list.push({
+      urls: String(env.VITE_TURN_URL).split(',').map((u) => u.trim()),
+      username: env.VITE_TURN_USER as string | undefined,
+      credential: env.VITE_TURN_PASS as string | undefined,
+    });
+  }
+  return list;
+}
+
 function peerOptions() {
   const env = import.meta.env;
-  if (!env.VITE_PEER_HOST) return { debug: 0 };
+  const base = { debug: 0, config: { iceServers: iceServers() } };
+  if (!env.VITE_PEER_HOST) return base;
   return {
+    ...base,
     host: env.VITE_PEER_HOST as string,
     port: Number(env.VITE_PEER_PORT ?? 443),
     path: (env.VITE_PEER_PATH as string | undefined) ?? '/',
     secure: env.VITE_PEER_SECURE !== 'false',
-    debug: 0,
   };
 }
+
+/** Adapta o DataConnection do PeerJS à interface Link. */
+function p2pLink(conn: DataConnection): Link {
+  return {
+    via: 'p2p',
+    get open() {
+      return conn.open;
+    },
+    send: (m) => conn.send(m),
+    close: () => conn.close(),
+    on: (ev, fn) => conn.on(ev as 'data', fn as () => void),
+  };
+}
+
+/** Tempo para a conexão direta abrir antes de tentar o servidor reserva. */
+const P2P_TIMEOUT = 8000;
 
 async function makePeer(id?: string): Promise<Peer> {
   const { Peer } = await import('peerjs');
@@ -96,7 +136,9 @@ let peer: Peer | null = null;
 const clients = new Map<string, Client>(); // por clientId
 let hostSetup: { profile: RuleProfile; rules: RuleSet; difficulty: BotDifficulty } | null = null;
 // Convidado
-let hostConn: DataConnection | null = null;
+let hostConn: Link | null = null;
+let relayHost: RelayHost | null = null;
+let lastCode: string | null = null;
 let retryTimer: ReturnType<typeof setTimeout> | null = null;
 let leaving = false;
 
@@ -147,7 +189,7 @@ export const useOnline = create<OnlineState>((set, get) => {
     if (!mine) toast(`${message.name}: ${message.text}`);
   }
 
-  function hostHandle(conn: DataConnection, msg: GuestToHost) {
+  function hostHandle(conn: Link, msg: GuestToHost) {
     const existing = [...clients.values()].find((c) => c.conn === conn);
     switch (msg.t) {
       case 'hello': {
@@ -195,15 +237,60 @@ export const useOnline = create<OnlineState>((set, get) => {
   }
 
   // ------------------------------------------------ convidado
+  /** Tenta direto (P2P); se não abrir a tempo, vai pelo servidor reserva. */
+  async function openLink(code: string): Promise<Link> {
+    let p2pErr = '';
+    try {
+      set({ phase: 'Procurando a sala…' });
+      if (!peer || peer.destroyed) peer = await makePeer();
+      const p = peer;
+      const link = await new Promise<Link>((resolve, reject) => {
+        const conn = p.connect(peerIdFor(code), { reliable: true });
+        const fail = (msg: string) => {
+          clearTimeout(timer);
+          p.off('error', onPeerErr);
+          conn.close();
+          reject(new Error(msg));
+        };
+        const onPeerErr = (e: { type?: string }) => {
+          if (e?.type === 'peer-unavailable') fail('Sala não encontrada.');
+          else if (e?.type === 'network' || e?.type === 'server-error' || e?.type === 'socket-error') fail('Sem acesso ao serviço de salas.');
+        };
+        const timer = setTimeout(() => fail('A conexão direta não abriu.'), P2P_TIMEOUT);
+        p.on('error', onPeerErr);
+        conn.once('open', () => {
+          clearTimeout(timer);
+          p.off('error', onPeerErr);
+          resolve(p2pLink(conn));
+        });
+      });
+      return link;
+    } catch (e) {
+      p2pErr = e instanceof Error ? e.message : '';
+    }
+    if (!relayAvailable) {
+      throw new Error(p2pErr.startsWith('Sala não encontrada')
+        ? 'Sala não encontrada. Confira o código e se o anfitrião está com o jogo aberto.'
+        : 'Não consegui conectar ao anfitrião. As redes de vocês bloqueiam a conexão direta.');
+    }
+    set({ phase: 'Conexão direta bloqueada. Tentando pelo servidor reserva…' });
+    return guestRelay(code, clientId());
+  }
+
   async function guestConnect(code: string) {
-    if (!peer || peer.destroyed) peer = await makePeer();
-    const conn = peer.connect(peerIdFor(code), { reliable: true });
+    const conn = await openLink(code);
+    if (leaving || get().role !== 'guest') {
+      conn.close();
+      return;
+    }
     hostConn = conn;
-    conn.on('open', () => {
-      const me = usePlayer.getState().player;
-      conn.send({ t: 'hello', clientId: clientId(), name: me.name, avatar: me.avatar } satisfies GuestToHost);
-      if (get().status === 'reconnecting') toast('Reconectado à mesa.');
-    });
+    set({ phase: null, via: conn.via });
+    let dropped = false;
+    const drop = () => {
+      if (dropped || hostConn !== conn) return;
+      dropped = true;
+      scheduleRetry(code);
+    };
     conn.on('data', (raw) => {
       const msg = raw as HostToGuest;
       if (msg.t === 'lobby') {
@@ -221,17 +308,48 @@ export const useOnline = create<OnlineState>((set, get) => {
         get().leave();
       }
     });
-    conn.on('close', () => scheduleRetry(code));
-    conn.on('error', () => scheduleRetry(code));
+    conn.on('close', drop);
+    conn.on('error', drop);
+    const me = usePlayer.getState().player;
+    conn.send({ t: 'hello', clientId: clientId(), name: me.name, avatar: me.avatar } satisfies GuestToHost);
+    if (get().status === 'reconnecting') toast('Reconectado à mesa.');
   }
 
-  function scheduleRetry(code: string) {
+  function scheduleRetry(code: string, delay = 3000) {
     if (leaving || get().role !== 'guest') return;
     set({ status: 'reconnecting' });
+    hostConn = null;
     if (retryTimer) clearTimeout(retryTimer);
     retryTimer = setTimeout(() => {
-      guestConnect(code).catch(() => scheduleRetry(code));
-    }, 3000);
+      retryTimer = null;
+      guestConnect(code).catch(() => scheduleRetry(code, 5000));
+    }, delay);
+  }
+
+  // ------------------------------------------------ anfitrião: conexões
+  function hostAccept(conn: Link) {
+    conn.on('data', (raw) => hostHandle(conn, raw as GuestToHost));
+    conn.on('close', () => {
+      const c = [...clients.values()].find((x) => x.conn === conn);
+      if (!c) return;
+      if (c.seat === null) clients.delete(c.clientId);
+      else toast(`${c.name} desconectou. A mesa espera a volta ou você pode colocar um bot no lugar.`);
+      broadcastLobby();
+    });
+  }
+
+  function watchHostPeer(p: Peer) {
+    p.on('connection', (conn) => hostAccept(p2pLink(conn)));
+    // Celular minimizado derruba o sinal com o serviço de salas: reconecta sozinho.
+    p.on('disconnected', () => {
+      if (leaving || peer !== p || p.destroyed) return;
+      setTimeout(() => {
+        if (!leaving && peer === p && p.disconnected && !p.destroyed) p.reconnect();
+      }, 1500);
+    });
+    p.on('error', () => {
+      /* erros da sala direta não derrubam a mesa: o servidor reserva segue ativo */
+    });
   }
 
   return {
@@ -243,37 +361,56 @@ export const useOnline = create<OnlineState>((set, get) => {
     chat: [],
     unread: 0,
     error: null,
+    phase: null,
+    via: null,
+
+    retry: () => {
+      const { role, code, status } = get();
+      const c = code ?? lastCode;
+      if (role !== 'guest' || !c) return;
+      // No meio da partida, reconecta sem perder a mesa; antes disso, entra de novo.
+      if (status === 'reconnecting') scheduleRetry(c, 0);
+      else void get().joinRoom(c);
+    },
 
     createRoom: async (profile, rules, difficulty) => {
       get().leave();
       leaving = false;
-      set({ role: 'host', status: 'connecting', error: null, chat: [], unread: 0, mySeat: 0 });
+      set({ role: 'host', status: 'connecting', error: null, chat: [], unread: 0, mySeat: 0, phase: 'Criando a sala…', via: null });
       hostSetup = { profile, rules: { ...rules, dealMode: 'auto' }, difficulty };
       let lastErr: unknown = null;
+      let code: string | null = null;
       for (let attempt = 0; attempt < 3; attempt++) {
-        const code = newRoomCode();
+        const c = newRoomCode();
         try {
-          peer = await makePeer(peerIdFor(code));
-          set({ code });
+          peer = await makePeer(peerIdFor(c));
+          code = c;
           break;
+        } catch (e) {
+          lastErr = e;
+          // Código já em uso: tenta outro. Sem acesso ao serviço: segue só com o reserva.
+          if ((e as { type?: string })?.type !== 'unavailable-id') {
+            code = c;
+            break;
+          }
+        }
+      }
+      if (leaving) return;
+      if (peer && !peer.destroyed && peer.open) watchHostPeer(peer);
+      else peer = null;
+      if (code && relayAvailable) {
+        try {
+          relayHost = await hostRelay(code, hostAccept);
         } catch (e) {
           lastErr = e;
         }
       }
-      if (!peer) {
-        set({ status: 'error', error: `Não foi possível criar a sala. ${lastErr instanceof Error ? lastErr.message : ''}` });
+      if (leaving) return;
+      if (!code || (!peer && !relayHost)) {
+        set({ status: 'error', phase: null, error: `Não foi possível criar a sala. ${lastErr instanceof Error ? lastErr.message : ''}` });
         return;
       }
-      peer.on('connection', (conn) => {
-        conn.on('data', (raw) => hostHandle(conn, raw as GuestToHost));
-        conn.on('close', () => {
-          const c = [...clients.values()].find((x) => x.conn === conn);
-          if (!c) return;
-          if (c.seat === null) clients.delete(c.clientId);
-          else toast(`${c.name} desconectou. A mesa espera a volta ou você pode colocar um bot no lugar.`);
-          broadcastLobby();
-        });
-      });
+      set({ code, phase: null });
       netHooks.broadcast = broadcastState;
       set({ status: 'lobby' });
       broadcastLobby();
@@ -292,12 +429,14 @@ export const useOnline = create<OnlineState>((set, get) => {
       const code = rawCode.trim().toUpperCase();
       get().leave();
       leaving = false;
-      set({ role: 'guest', status: 'connecting', code, error: null, chat: [], unread: 0, lobby: null, mySeat: null });
+      lastCode = code;
+      set({ role: 'guest', status: 'connecting', code, error: null, chat: [], unread: 0, lobby: null, mySeat: null, phase: 'Procurando a sala…', via: null });
       writeJSON('dpb.online.last', { code, at: Date.now() });
       try {
         await guestConnect(code);
       } catch (e) {
-        set({ status: 'error', error: `Não foi possível entrar na sala ${code}. ${e instanceof Error ? e.message : ''}` });
+        if (leaving) return;
+        set({ status: 'error', phase: null, error: `Não foi possível entrar na sala ${code}. ${e instanceof Error ? e.message : ''}` });
       }
     },
 
@@ -334,14 +473,17 @@ export const useOnline = create<OnlineState>((set, get) => {
       if (retryTimer) clearTimeout(retryTimer);
       if (get().role === 'host') for (const c of clients.values()) sendTo(c, { t: 'closed', reason: 'O anfitrião encerrou a sala.' });
       clients.clear();
-      hostConn?.close();
+      const hc = hostConn;
       hostConn = null;
+      hc?.close();
+      relayHost?.close();
+      relayHost = null;
       peer?.destroy();
       peer = null;
       hostSetup = null;
       netHooks.broadcast = undefined;
       if (useGame.getState().net !== 'local') useGame.getState().leaveOnline();
-      set({ role: null, status: 'idle', code: null, lobby: null, mySeat: null });
+      set({ role: null, status: 'idle', code: null, lobby: null, mySeat: null, phase: null, via: null });
     },
   };
 });
@@ -353,4 +495,14 @@ netHooks.sendNextRound = () => hostConn?.send({ t: 'next-round' } satisfies Gues
 export function lastOnlineRoom(): string | null {
   const r = readJSON<{ code: string; at: number } | null>('dpb.online.last', null);
   return r && Date.now() - r.at < 6 * 3600_000 ? r.code : null;
+}
+
+// Ao voltar para o app: anfitrião religa a sala direta; convidado tenta na hora.
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible' || leaving) return;
+    const st = useOnline.getState();
+    if (st.role === 'host' && peer && peer.disconnected && !peer.destroyed) peer.reconnect();
+    if (st.role === 'guest' && st.status === 'reconnecting' && retryTimer) st.retry();
+  });
 }

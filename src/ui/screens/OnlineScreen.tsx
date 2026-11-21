@@ -135,7 +135,7 @@ function Lobby() {
   const go = useNav((s) => s.go);
   const back = useNav((s) => s.back);
   const toast = useToast();
-  const { role, status, code, lobby, mySeat, error } = online;
+  const { role, status, code, lobby, mySeat, error, phase, via } = online;
 
   async function share() {
     if (!code) return;
@@ -151,18 +151,26 @@ function Lobby() {
     }
   }
 
-  if (status === 'connecting') return <p className="muted">Conectando…</p>;
+  if (status === 'connecting')
+    return (
+      <>
+        <p className="muted" role="status">{phase ?? 'Conectando…'}</p>
+        <button className="btn btn--sm" onClick={() => online.leave()}>Cancelar</button>
+      </>
+    );
   if (status === 'error')
     return (
       <>
-        <p className="errors">{error}</p>
+        <p className="errors" role="alert">{error}</p>
+        {role === 'guest' && <button className="btn" onClick={() => online.retry()}>Tentar de novo</button>}
         <button className="btn" onClick={() => online.leave()}>Voltar</button>
       </>
     );
 
   return (
     <>
-      {status === 'reconnecting' && <p className="errors">Conexão perdida. Tentando reconectar…</p>}
+      {status === 'reconnecting' && <p className="errors" role="status">Conexão perdida. Tentando reconectar…</p>}
+      {role === 'guest' && via === 'relay' && status !== 'reconnecting' && <p className="muted" style={{ textAlign: 'center' }}>Conectado pelo servidor reserva.</p>}
       <section className="panel" style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center' }}>
         <span className="section-title">Código da sala</span>
         <strong style={{ fontFamily: 'var(--font-display)', fontSize: '2.6rem', letterSpacing: '0.18em' }}>{code}</strong>
