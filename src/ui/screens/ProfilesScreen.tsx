@@ -76,7 +76,6 @@ export function ProfilesScreen({ mode }: { mode: GameMode }) {
                 {isOpen && (
                   <div className="profile__body">
                     <p className="muted" style={{ fontSize: 'var(--fs-sm)' }}>{p.description}</p>
-                    <RuleSummary rules={p.rules} status={p.ruleStatus} />
                     <div className="profile__actions">
                       <button className="btn btn--primary" onClick={() => go({ name: 'setup', profileId: p.id })}>
                         <Icon name="play" size={18} /> Jogar
@@ -98,6 +97,10 @@ export function ProfilesScreen({ mode }: { mode: GameMode }) {
                         </button>
                       )}
                     </div>
+                    <details className="profile__rules">
+                      <summary>Ver todas as regras</summary>
+                      <RuleSummary rules={p.rules} status={p.ruleStatus} />
+                    </details>
                   </div>
                 )}
               </section>

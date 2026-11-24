@@ -1,5 +1,5 @@
 import type { MatchState } from '../../engine/types';
-import { sideName } from './text';
+import { getViewSide, sideName } from './text';
 import { sideColor } from './colors';
 
 export function Scoreboard({ match, pulseSide }: { match: MatchState; pulseSide: { side: number; key: number } | null }) {
@@ -7,7 +7,11 @@ export function Scoreboard({ match, pulseSide }: { match: MatchState; pulseSide:
   return (
     <div className="scoreboard" aria-label="Placar">
       <div className="scoreboard__sides">
-        {match.scores.map((score, side) => (
+        {/* "Nós" sempre primeiro, mesmo para quem está no lado 1. */}
+        {match.scores
+          .map((score, side) => ({ score, side }))
+          .sort((a, b) => (rules.teams ? Number(b.side === getViewSide()) - Number(a.side === getViewSide()) : 0))
+          .map(({ score, side }) => (
           <span
             key={pulseSide?.side === side ? `${side}-${pulseSide.key}` : side}
             className={`scoreboard__side ${pulseSide?.side === side ? 'is-pulse' : ''}`}

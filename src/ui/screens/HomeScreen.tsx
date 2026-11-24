@@ -7,7 +7,6 @@ import { Icon } from '../components/Icon';
 import { TileSvg } from '../components/Tile';
 import { loadLastGame } from './ReplayScreen';
 import { usePwa } from '../../services/pwa';
-import { useToast } from '../components/Toast';
 import { InstallSheet } from '../components/InstallSheet';
 import './menus.css';
 
@@ -21,9 +20,6 @@ export function HomeScreen() {
   const canInstall = usePwa((s) => s.canInstall);
   const install = usePwa((s) => s.install);
   const [showInstall, setShowInstall] = useState(false);
-  const toast = useToast();
-  const checking = usePwa((s) => s.checking);
-  const checkNow = usePwa((s) => s.checkNow);
 
   return (
     <main className="screen home">
@@ -106,8 +102,8 @@ export function HomeScreen() {
           <button className="list__item" onClick={() => go({ name: 'howto' })}>
             <Icon name="book" />
             <span className="list__main">
-              <span className="list__label">Como jogar</span>
-              <span className="list__hint">Passe e Bate, batidas e All Fives em 2 minutos</span>
+              <span className="list__label">Livro de regras</span>
+              <span className="list__hint">Passe e Bate, De 5 em 5, Burrinha e glossário</span>
             </span>
           </button>
           <button className="list__item" onClick={() => go({ name: 'player' })}>
@@ -119,16 +115,6 @@ export function HomeScreen() {
           </button>
         </nav>
 
-        <button
-          className="btn btn--block home__update"
-          disabled={checking}
-          onClick={async () => {
-            const found = await checkNow();
-            if (!found) toast('Você já está na versão mais nova.');
-          }}
-        >
-          <Icon name="download" size={18} /> {checking ? 'Verificando…' : 'Atualizar o jogo'}
-        </button>
       </div>
     </main>
   );

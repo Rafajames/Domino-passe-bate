@@ -13,17 +13,20 @@ interface Props {
   teamColor: string;
   bubble: { key: number; text: string } | null;
   showBacks: boolean;
+  /** "Parceiro" / "Adversário" em duplas. */
+  tag?: string;
 }
 
-export function Seat({ player, position, count, active, teamColor, bubble, showBacks }: Props) {
+export function Seat({ player, position, count, active, teamColor, bubble, showBacks, tag }: Props) {
   return (
-    <div className={`seat seat--${position} ${active ? 'is-active' : ''}`} aria-label={`${player.name}, ${count} pedras${active ? ', jogando agora' : ''}`}>
+    <div className={`seat seat--${position} ${active ? 'is-active' : ''}`} aria-label={`${player.name}${tag ? ` (${tag.toLowerCase()})` : ''}, ${count} pedras${active ? ', jogando agora' : ''}`}>
       <div className="seat__chip">
         <span className="seat__avatar">
           <Avatar emoji={player.avatar} size={34} ring={teamColor} />
           {active && <span className="seat__pulse" aria-hidden />}
         </span>
         <span className="seat__info">
+          {tag && <span className="seat__tag" style={{ color: teamColor }}>{tag}</span>}
           <span className="seat__name">{player.name}</span>
           <span className="seat__meta">
             {count === 0 ? 'bateu ✓' : `${count} pedra${count === 1 ? '' : 's'}`}

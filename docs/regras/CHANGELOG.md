@@ -4,6 +4,14 @@ Regras: versões publicadas **nunca são editadas nem apagadas**. Qualquer mudan
 
 Perfis personalizados guardam o próprio histórico (`RuleProfile.history`) a cada "Salvar nova versão".
 
+## 2026-11-23 — v5: rodada das quatro carroças vale o dobro
+
+- `pb-paraiba` e `pb-paraiba-quadrada-4` → v5.
+- Depois de embaralhar por **quatro carroças**, a rodada redistribuída **vale o dobro** (batida e jogo trancado).
+  É a versão mais registrada (Wikipédia em português e regulamentos de torneio, ex. Fenafisco). O costume de **+1 ponto** fica como opção no editor.
+- Nomes dos perfis embutidos deixam de citar lugares: "Passe e Bate — Clássico", "De 5 em 5 — Com dorme", "De 5 em 5 — Em duplas", "Burrinha — Clássica". Os ids continuam os mesmos para não quebrar perfis e partidas salvos.
+- "All Fives" passa a aparecer como **De 5 em 5** no jogo.
+
 ## 2026-11-20 — v4: regra das carroças
 
 - `pb-paraiba` e `pb-paraiba-quadrada-4` → v4.

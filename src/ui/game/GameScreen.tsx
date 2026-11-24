@@ -26,7 +26,7 @@ import { HistoryPanel } from './HistoryPanel';
 import { RoundEndSheet } from './RoundEndSheet';
 import { Scoreboard } from './Scoreboard';
 import { Seat, type SeatPosition } from './Seat';
-import { eventText, redealText, tileName } from './text';
+import { eventText, redealText, setViewSide, tileName } from './text';
 import { useGameSounds } from './useGameSounds';
 import { decideTurnAsync } from '../../ai/async';
 import { playerView } from '../../engine/view';
@@ -81,6 +81,8 @@ export function GameScreen() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [claimHidden, setClaimHidden] = useState<number | null>(null);
   const [showEnd, setShowEnd] = useState(false);
+  /** "Ver a mesa": esconde o resultado para olhar a batida final. */
+  const [peek, setPeek] = useState(false);
 
   useEffect(() => {
     if (error) toast(error);
@@ -92,7 +94,7 @@ export function GameScreen() {
   const roundKey = match ? `${match.id}:${match.round.index}` : '';
   useEffect(() => {
     const start = match?.round.events[0];
-    if (start?.kind === 'round-start' && start.redeals?.length && match) toast(redealText(start.redeals, match.players).trim());
+    if (start?.kind === 'round-start' && start.redeals?.length && match) toast(redealText(start.redeals, match.players, match.frozen.rules).trim());
   }, [roundKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Mostra o resumo do fim de rodada depois da animação da última pedra.
@@ -100,6 +102,7 @@ export function GameScreen() {
   useEffect(() => {
     if (status === 'playing' || !status) {
       setShowEnd(false);
+      setPeek(false);
       return;
     }
     const t = setTimeout(() => setShowEnd(true), 1100);
@@ -150,6 +153,7 @@ export function GameScreen() {
   }
 
   const { r, rules, myTurn, moves, playable, lastPlayEvent, lastScore, scoreEvent } = derived;
+  setViewSide(sideOf(HUMAN_SEAT, rules));
   const highlight = rules.assists.highlightPlayable;
   const n = rules.players;
   const hand = r.hands[HUMAN_SEAT] ?? [];
@@ -162,6 +166,27 @@ export function GameScreen() {
     else targets = openEnds(r.board).map((e) => ({ arm: e.arm, valid: hasValue(tile, e.value) && moves.some((m) => m.tileId === selectedId && m.arm === e.arm) }));
   }
 
+  /**
+   * Destinos que dão no mesmo resultado (pontas com o mesmo número) contam como um só:
+   * não faz sentido perguntar em qual jogar. No "de 5 em 5" a carroça na ponta muda a soma,
+   * então ali só junta pontas iguais em número e em carroça.
+   */
+  function uniqueOptions(tileId: string) {
+    const options = moves.filter((m) => m.tileId === tileId);
+    if (options.length < 2 || !r.board.root) return options;
+    const ends = openEnds(r.board);
+    const key = (arm: string) => {
+      const e = ends.find((x) => x.arm === arm);
+      if (!e) return arm;
+      return rules.mode === 'all-fives' ? `${e.value}|${e.doubleExposed}` : String(e.value);
+    };
+    const first = key(options[0]!.arm);
+    if (!options.every((m) => key(m.arm) === first)) return options;
+    // Tanto faz: joga na ponta com menos pedras (mesa mais equilibrada).
+    const len = (arm: string) => (r.board.arms as Record<string, readonly unknown[] | undefined>)[arm]?.length ?? 0;
+    return [options.reduce((a, b) => (len(b.arm) < len(a.arm) ? b : a))];
+  }
+
   function onTapTile(tileId: string) {
     if (!myTurn) {
       select(selectedId === tileId ? null : tileId);
@@ -169,7 +194,7 @@ export function GameScreen() {
     }
     if (selectedId === tileId) {
       // Segundo toque: joga direto se só houver um destino.
-      const options = moves.filter((m) => m.tileId === tileId);
+      const options = uniqueOptions(tileId);
       if (options.length === 1) play(tileId, options[0]!.arm);
       else if (options.length === 0) {
         toast(highlight ? 'Essa pedra não encaixa.' : 'Escolha uma ponta na mesa.');
@@ -214,7 +239,7 @@ export function GameScreen() {
     if (!r.board.root && r.mustOpenWith) statusText = `Você sai com a ${tileName(r.mustOpenWith)}`;
     else if (!r.board.root && r.mustOpenDouble) statusText = 'Você sai — escolha uma carroça';
     else if (highlight && moves.length === 0) statusText = canBuy ? 'Sem jogada — compre do dorme' : 'Sem jogada — passe a vez';
-    else statusText = selectedId ? 'Toque na ponta para jogar' : 'Sua vez — escolha uma pedra';
+    else statusText = selectedId ? (uniqueOptions(selectedId).length === 1 ? 'Toque de novo na pedra ou na ponta' : 'Toque na ponta para jogar') : 'Sua vez — escolha uma pedra';
   } else if (rules.mode === 'burrinha' && hand.length === 0) statusText = fastForward ? 'Você bateu! Acelerando até o fim…' : `Você bateu! Vez de ${turnPlayer?.name ?? ''}`;
   else statusText = `Vez de ${turnPlayer?.name ?? ''}`;
 
@@ -272,6 +297,7 @@ export function GameScreen() {
                 teamColor={tileColors ? seatColor(seat) : sideColor(sideOf(seat, rules), rules.teams)}
                 bubble={bubbleFor(seat)}
                 showBacks={pos === 'top'}
+                tag={rules.teams ? (sideOf(seat, rules) === sideOf(HUMAN_SEAT, rules) ? 'Parceiro' : 'Adversário') : undefined}
               />
             </div>
           );
@@ -459,8 +485,14 @@ export function GameScreen() {
         />
       )}
       {historyOpen && <HistoryPanel match={match} seat={HUMAN_SEAT} onClose={() => setHistoryOpen(false)} />}
-      {showEnd && match.status !== 'playing' && (
+      {showEnd && peek && match.status !== 'playing' && (
+        <button className="btn btn--primary round-end__peek" onClick={() => setPeek(false)}>
+          Voltar ao resultado
+        </button>
+      )}
+      {showEnd && !peek && match.status !== 'playing' && (
         <RoundEndSheet
+          onPeek={() => setPeek(true)}
           match={match}
           viewSeat={HUMAN_SEAT}
           net={net}

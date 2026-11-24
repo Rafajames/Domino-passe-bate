@@ -5,35 +5,50 @@ import { TileSvg } from '../components/Tile';
 import { sideColor } from './colors';
 import { resultDetail, resultTitle, sideName } from './text';
 import { Sheet } from './Sheet';
+import { Icon } from '../components/Icon';
 
-export function RoundEndSheet({ match, viewSeat: HUMAN_SEAT, net = 'local', onNext, onExit, onRematch, onReview }: { match: MatchState; viewSeat: number; net?: 'local' | 'host' | 'guest'; onNext: () => void; onExit: () => void; onRematch: () => void; onReview: () => void }) {
+export function RoundEndSheet({ match, viewSeat: HUMAN_SEAT, net = 'local', onNext, onExit, onRematch, onReview, onPeek }: { match: MatchState; viewSeat: number; net?: 'local' | 'host' | 'guest'; onNext: () => void; onExit: () => void; onRematch: () => void; onReview: () => void; onPeek: () => void }) {
   const rules = match.frozen.rules;
   const finished = match.status === 'finished';
   const r = match.round.result;
   const mySide = sideOf(HUMAN_SEAT, rules);
   const burrinha = rules.mode === 'burrinha';
   const won = burrinha ? !(match.loserSeats ?? []).includes(HUMAN_SEAT) : match.winnerSide === mySide;
-  const title = finished ? (won ? 'Vitória!' : 'Fim de partida') : r ? resultTitle(r) : 'Fim da rodada';
+  const winnerName = !burrinha && match.winnerSide !== null ? sideName(match.winnerSide, rules, match.players) : '';
+  // Um título só: quem venceu a partida (sem repetir "Vitória!" + "Nós vencemos").
+  const title = finished
+    ? burrinha
+      ? won ? 'Você escapou!' : 'Fim do dorme'
+      : match.winnerSide === null
+        ? 'Partida encerrada'
+        : rules.teams
+          ? won ? 'Nós vencemos!' : 'Eles venceram'
+          : won ? 'Você venceu!' : `${winnerName} venceu`
+    : r
+      ? resultTitle(r)
+      : 'Fim da rodada';
+  // Pontos ganhos nesta rodada, mostrados no placar do lado que pontuou.
+  const gained = r && !burrinha && r.type !== 'carrocas' && r.winnerSide !== null && r.points > 0 ? { side: r.winnerSide, points: r.points } : null;
 
   return (
     <Sheet title={title}>
       <div className="round-end">
-        {finished && (
+        {finished && burrinha && (
           <p className="round-end__headline" style={{ color: won ? 'var(--brass-strong)' : 'var(--text-2)' }}>
-            {burrinha
-              ? `${(match.loserSeats ?? []).map((s) => match.players[s]?.name).join(' e ')} ${(match.loserSeats?.length ?? 0) > 1 ? 'são as burrinhas' : 'é a burrinha'}! O dorme acabou.`
-              : match.winnerSide !== null
-                ? `${sideName(match.winnerSide, rules, match.players)} venceu${rules.teams ? 'm' : ''} a partida.`
-                : 'Partida encerrada.'}
+            {`${(match.loserSeats ?? []).map((s) => match.players[s]?.name).join(' e ')} ${(match.loserSeats?.length ?? 0) > 1 ? 'são as burrinhas' : 'é a burrinha'}! O dorme acabou.`}
           </p>
         )}
         {r && <p className="round-end__text">{finished ? `${resultTitle(r)} ` : ''}{resultDetail(r, match.players, rules)}</p>}
 
         <div className="round-end__scores">
-          {match.scores.map((s, side) => (
+          {match.scores
+            .map((s, side) => ({ s, side }))
+            .sort((a, b) => (rules.teams ? Number(b.side === mySide) - Number(a.side === mySide) : 0))
+            .map(({ s, side }) => (
             <div key={side} className="round-end__score" style={{ ['--side' as string]: sideColor(side, rules.teams) }}>
               <span>{sideName(side, rules, match.players)}</span>
               <strong>{s}</strong>
+              {gained?.side === side && <em className="round-end__gain">+{gained.points}</em>}
               {burrinha && <small className="muted">castigo{s === 1 ? '' : 's'} · {match.handSizes?.[side] ?? '-'} pedras</small>}
             </div>
           ))}
@@ -45,10 +60,11 @@ export function RoundEndSheet({ match, viewSeat: HUMAN_SEAT, net = 'local', onNe
             {r.hands.map((h, seat) => (
               <div key={seat} className="round-end__hand">
                 <span className="round-end__who">
-                  {match.players[seat]?.name} <span className="muted">· {handPips(h)} {handPips(h) === 1 ? 'ponto' : 'pontos'}</span>
+                  {match.players[seat]?.name}
+                  {h.length > 0 && <span className="muted"> · {handPips(h)} {handPips(h) === 1 ? 'ponto' : 'pontos'}</span>}
                 </span>
                 <span className="round-end__tiles">
-                  {h.length === 0 ? <span className="muted">bateu</span> : h.map((t) => <TileSvg key={t.id} first={t.a} second={t.b} unit={14} />)}
+                  {h.length === 0 ? <span className="round-end__out">bateu ✓</span> : h.map((t) => <TileSvg key={t.id} first={t.a} second={t.b} unit={18} />)}
                 </span>
               </div>
             ))}
@@ -57,7 +73,7 @@ export function RoundEndSheet({ match, viewSeat: HUMAN_SEAT, net = 'local', onNe
                 <span className="round-end__who muted">Cemitério</span>
                 <span className="round-end__tiles">
                   {match.round.outOfPlay.map((t) => (
-                    <TileSvg key={t.id} first={t.a} second={t.b} unit={14} />
+                    <TileSvg key={t.id} first={t.a} second={t.b} unit={18} />
                   ))}
                 </span>
               </div>
@@ -66,11 +82,16 @@ export function RoundEndSheet({ match, viewSeat: HUMAN_SEAT, net = 'local', onNe
         )}
 
         <div className="round-end__actions">
-          {net !== 'guest' && (
-            <button className="btn btn--block btn--ghost" onClick={onReview}>
-              Revisar {finished ? 'o jogo' : 'a rodada'} jogada por jogada
+          <div className="round-end__secondary">
+            <button className="btn btn--sm" onClick={onPeek}>
+              <Icon name="eye" size={16} /> Ver a mesa
             </button>
-          )}
+            {net !== 'guest' && (
+              <button className="btn btn--sm" onClick={onReview}>
+                <Icon name="history" size={16} /> Revisar jogadas
+              </button>
+            )}
+          </div>
           {finished ? (
             <>
               {net !== 'guest' ? (

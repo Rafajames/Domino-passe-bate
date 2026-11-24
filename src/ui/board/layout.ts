@@ -306,7 +306,8 @@ export function hasCollision(layout: BoardLayout, includeSlots = false): boolean
  */
 export function layoutBoard(board: BoardState, aspect: number, arrangement: Arrangement = {}): BoardLayout {
   // Retrato: fileiras curtas e mais fileiras (pedras maiores). Paisagem: fileiras longas.
-  let bx = Math.max(3, 3.5 * aspect);
+  // Retrato: 4 unidades por lado deixa a mesa mais larga e menos "torre" (medido: pedras ~13% maiores no fim da rodada).
+  let bx = Math.max(4, 3.5 * aspect);
   let by = Math.max(3.5, bx / Math.max(aspect, 0.1));
   let layout = layoutOnce(board, bx, by, arrangement);
   for (let i = 0; i < 10 && hasCollision(layout, true); i++) {

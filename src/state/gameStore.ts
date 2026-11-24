@@ -18,7 +18,7 @@ import { usePlayer } from './playerStore';
 
 export const HUMAN_SEAT = 0;
 
-const BOT_NAMES = ['Zé da Praça', 'Dona Céu', 'Biu', 'Tonhão', 'Nena', 'Seu Lula', 'Ritinha', 'Galego'];
+const BOT_NAMES = ['Ana', 'João', 'Maria', 'Pedro', 'Juliana', 'Carlos', 'Fernanda', 'Lucas'];
 const BOT_AVATARS = ['🐆', '🦉', '🐢', '🦊', '🐺', '🦩', '🐬'];
 
 export interface LocalHuman {

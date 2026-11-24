@@ -131,6 +131,9 @@ export function SetupScreen({ profileId }: { profileId: string }) {
           </div>
         </section>
 
+        <details className="setup__more">
+          <summary>Mais opções <span className="muted">— pedras, distribuição, estilo e regras</span></summary>
+          <div className="setup__more-body">
         <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <h3 className="section-title">{isBurrinha ? 'Mesa' : 'Pedras'}</h3>
           {isBurrinha && (
@@ -205,7 +208,7 @@ export function SetupScreen({ profileId }: { profileId: string }) {
             </button>
             <button aria-pressed={faithful} onClick={() => setFaithful(true)}>
               <strong>Fiel à mesa</strong>
-              <span className="difficulty__desc">Sem destaques. No All Fives, quem não marca os pontos, perde.</span>
+              <span className="difficulty__desc">Sem destaques. No De 5 em 5, quem não marca os pontos, perde.</span>
             </button>
           </div>
         </section>
@@ -219,6 +222,8 @@ export function SetupScreen({ profileId }: { profileId: string }) {
             As regras são congeladas ao iniciar: editar o perfil depois não altera esta partida. Partidas contra bots não contam para o ranking.
           </p>
         </section>
+          </div>
+        </details>
 
         <div className="sticky-footer">
           <button

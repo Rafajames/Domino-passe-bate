@@ -7,7 +7,7 @@ import { ScreenHeader } from '../components/ScreenHeader';
 import { TileSvg } from '../components/Tile';
 import { BoardView } from '../game/BoardView';
 import { seatColor, sideColor } from '../game/colors';
-import { eventText, redealText, resultText, sideName, tileName } from '../game/text';
+import { eventText, redealText, resultText, setViewSide, sideName, tileName } from '../game/text';
 import { MODE_LABEL } from '../rules/describe';
 import '../game/game.css';
 import './menus.css';
@@ -73,6 +73,7 @@ export function ReplayScreen({ initialRound }: { initialRound?: number }) {
   }
 
   const rules = record.frozen.rules;
+  setViewSide(0);
   const current = steps[Math.min(step, steps.length - 1)];
   if (!current) {
     return (
@@ -88,7 +89,7 @@ export function ReplayScreen({ initialRound }: { initialRound?: number }) {
   const lastPlay = [...m.round.events].reverse().find((e) => e.kind === 'play');
   const caption =
     step === 0
-      ? `${redealText(round.events[0]?.kind === 'round-start' ? round.events[0].redeals : undefined, record.players)}Distribuição — ${record.players[round.starter]?.name} sai${round.mustOpenWith ? ` com a ${tileName(round.mustOpenWith)}` : round.mustOpenDouble ? ' de carroça' : ''}.`
+      ? `${redealText(round.events[0]?.kind === 'round-start' ? round.events[0].redeals : undefined, record.players, rules)}Distribuição — ${record.players[round.starter]?.name} sai${round.mustOpenWith ? ` com a ${tileName(round.mustOpenWith)}` : round.mustOpenDouble ? ' de carroça' : ''}.`
       : current.event
         ? eventText(current.event, record.players, rules)
         : '';

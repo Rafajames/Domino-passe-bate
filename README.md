@@ -2,9 +2,9 @@
 
 Jogo de dominó digital com **regras regionais configuráveis**, feito para celular primeiro (Android), mas que também funciona em tablet e computador.
 
-- **Passe e Bate** — dominó tradicional com as batidas paraibanas (simples, carroça, lá e lô, lá e lô de carroça).
-- **All Fives** — o "dominó de pontos" (perfil padrão pesquisado e perfil de Boa Vista-RR).
-- **Burrinha** — três pedras cada; quem perde recomeça com uma a mais, até o dorme acabar (Paraíba).
+- **Passe e Bate** — dominó tradicional em duplas, com batidas simples, de carroça, lá e lô e lá e lô de carroça.
+- **De 5 em 5 (All Fives)** — o "dominó de pontos": com dorme para 2 jogadores ou em duplas.
+- **Burrinha** — três pedras cada; quem perde recomeça com uma a mais, até o dorme acabar.
 - **Modo solo** contra bots em quatro níveis (Fácil, Normal, Difícil, Mestre), com dica do Mestre.
 - **Passar o celular**: várias pessoas no mesmo aparelho, com as mãos escondidas entre as vezes.
 - **Online entre amigos** sem servidor próprio: sala por código ou link, chat e reconexão (P2P).
@@ -34,7 +34,7 @@ src/
     rules/       Tipos, perfis embutidos, validação, congelamento
     board.ts     Pontas, spinner, soma das extremidades
     match.ts     Distribuição, turnos, jogar/comprar/passar, fim de rodada
-    scoring.ts   Batidas paraibanas e pontuação do All Fives
+    scoring.ts   Batidas do Passe e Bate e pontuação do De 5 em 5
     view.ts      PlayerView: o que cada jogador pode saber (sem mãos alheias)
   ai/            Bots: inferência, heurísticas, Monte Carlo (Mestre), Web Worker
   net/           Online P2P: protocolo e estado redigido enviado aos convidados

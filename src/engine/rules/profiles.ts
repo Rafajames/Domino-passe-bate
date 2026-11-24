@@ -36,7 +36,7 @@ export const PASSE_BATE_PB: RuleSet = {
   nextRoundStarter: 'round-winner',
   spinner: false,
   targetScore: 6,
-  doubles: { redealAt: 4, winAt: 5 },
+  doubles: { redealAt: 4, winAt: 5, bonus: 'double' },
   passeBate: { ...basePasseBate, batidaPoints: { ...basePasseBate.batidaPoints }, blocked: { ...basePasseBate.blocked } },
   allFives: { ...baseAllFives },
   assists: { ...defaultAssists },
@@ -60,7 +60,7 @@ export const ALL_FIVES_STANDARD: RuleSet = {
   assists: { ...defaultAssists },
 };
 
-export const ALL_FIVES_BOA_VISTA: RuleSet = {
+export const ALL_FIVES_TEAMS: RuleSet = {
   ...ALL_FIVES_STANDARD,
   players: 4,
   teams: true,
@@ -71,7 +71,7 @@ export const ALL_FIVES_BOA_VISTA: RuleSet = {
   assists: { ...defaultAssists },
 };
 
-/** Burrinha (Paraíba), conforme descrição do usuário em 18/11/2026. */
+/** Burrinha, conforme descrição do usuário em 18/11/2026. */
 export const BURRINHA_PB: RuleSet = {
   mode: 'burrinha',
   players: 4,
@@ -109,12 +109,12 @@ const passeBateStatus: Record<string, RuleStatus> = {
 export const BUILTIN_PROFILES: readonly RuleProfile[] = [
   {
     id: 'pb-paraiba',
-    name: 'Passe e Bate — Paraíba',
+    name: 'Passe e Bate — Clássico',
     mode: 'passe-bate',
-    version: 4,
+    version: 5,
     builtIn: true,
     description:
-      'Dominó tradicional em duplas, sem dorme. Batidas regionais paraibanas: simples 1, carroça 2, lá e lô 3, lá e lô de carroça 6.',
+      'Dominó tradicional em duplas, sem dorme. Batidas: simples 1, carroça 2, lá e lô 3, lá e lô de carroça 6. Quatro carroças na mão: embaralha e a rodada vale o dobro.',
     rules: PASSE_BATE_PB,
     ruleStatus: passeBateStatus,
     history: [],
@@ -125,7 +125,7 @@ export const BUILTIN_PROFILES: readonly RuleProfile[] = [
     id: 'pb-paraiba-quadrada-4',
     name: 'Passe e Bate — Quadrada vale 4',
     mode: 'passe-bate',
-    version: 4,
+    version: 5,
     builtIn: true,
     basedOn: 'pb-paraiba',
     description: 'Variação registrada em que a batida quadrada (lá e lô de carroça) vale 4 pontos.',
@@ -140,12 +140,12 @@ export const BUILTIN_PROFILES: readonly RuleProfile[] = [
   },
   {
     id: 'af-padrao',
-    name: 'All Fives — Padrão pesquisado',
+    name: 'De 5 em 5 — Com dorme',
     mode: 'all-fives',
     version: 1,
     builtIn: true,
     description:
-      'Duplo-seis com dorme. Primeira carroça é o spinner. Pontas somando múltiplo de 5 pontuam o valor integral.',
+      'Dois jogadores, sete pedras cada e dorme para comprar. A primeira carroça é o spinner. Pontas somando múltiplo de 5 marcam o valor da soma.',
     rules: ALL_FIVES_STANDARD,
     ruleStatus: {
       players: 'researched',
@@ -169,13 +169,13 @@ export const BUILTIN_PROFILES: readonly RuleProfile[] = [
   },
   {
     id: 'af-boa-vista',
-    name: 'All Fives — Boa Vista',
+    name: 'De 5 em 5 — Em duplas',
     mode: 'all-fives',
     version: 2,
     builtIn: true,
     description:
-      'Dominó de pontos de Boa Vista-RR: quatro jogadores, sete pedras cada, sem dorme — as 28 pedras são distribuídas.',
-    rules: ALL_FIVES_BOA_VISTA,
+      'Quatro jogadores em duplas, sete pedras cada, sem dorme — as 28 pedras são distribuídas.',
+    rules: ALL_FIVES_TEAMS,
     ruleStatus: {
       players: 'regional',
       handSize: 'regional',
@@ -199,7 +199,7 @@ export const BUILTIN_PROFILES: readonly RuleProfile[] = [
 
 export const BURRINHA_PROFILE: RuleProfile = {
   id: 'burrinha-pb',
-  name: 'Burrinha — Paraíba',
+  name: 'Burrinha — Clássica',
   mode: 'burrinha',
   version: 1,
   builtIn: true,
@@ -227,7 +227,7 @@ export function findBuiltin(id: string): RuleProfile | undefined {
 
 (BUILTIN_PROFILES as RuleProfile[]).push(BURRINHA_PROFILE);
 
-/** Distribuição recomendada pelo padrão pesquisado para All Fives com dorme. */
+/** Distribuição recomendada pelo padrão pesquisado para o De 5 em 5 com dorme. */
 export function researchedHandSize(players: number): number {
   return players === 2 ? 7 : 5;
 }

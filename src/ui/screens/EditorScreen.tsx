@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { cloneRules } from '../../engine/rules/freeze';
 import { researchedHandSize } from '../../engine/rules/profiles';
-import type { GameMode, RuleSet, RuleStatus } from '../../engine/rules/types';
+import type { DoublesBonus, GameMode, RuleSet, RuleStatus } from '../../engine/rules/types';
 import { validateRules } from '../../engine/rules/validate';
 import { useNav } from '../../state/navigation';
 import { useProfiles } from '../../state/profilesStore';
@@ -137,14 +137,28 @@ export function EditorScreen({ mode, profileId }: { mode: GameMode; profileId: s
                   <Switch
                     label="Quatro carroças: embaralha de novo"
                     checked={!!rules.doubles?.redealAt}
-                    onChange={(on) => patch({ doubles: { redealAt: on ? 4 : null, winAt: rules.doubles?.winAt ?? null } })}
+                    onChange={(on) => patch({ doubles: { ...rules.doubles, redealAt: on ? 4 : null, winAt: rules.doubles?.winAt ?? null } })}
                   />
                 </RuleRow>
+                {rules.mode === 'passe-bate' && !!rules.doubles?.redealAt && (
+                  <RuleRow label="Rodada depois das quatro carroças" hint="O dobro é a regra mais registrada; +1 ponto é costume de algumas mesas.">
+                    <Segmented<DoublesBonus>
+                      label="Rodada depois das quatro carroças"
+                      value={rules.doubles.bonus ?? 'none'}
+                      onChange={(v) => patch({ doubles: { redealAt: rules.doubles?.redealAt ?? null, winAt: rules.doubles?.winAt ?? null, bonus: v } })}
+                      options={[
+                        { value: 'double', label: 'Vale o dobro' },
+                        { value: 'plus-one', label: '+1 ponto' },
+                        { value: 'none', label: 'Normal' },
+                      ]}
+                    />
+                  </RuleRow>
+                )}
                 <RuleRow label="Cinco carroças: ganha a partida" hint="Quem receber cinco ou mais carroças ganha a partida na hora (em duplas, a dupla)." inline>
                   <Switch
                     label="Cinco carroças: ganha a partida"
                     checked={!!rules.doubles?.winAt}
-                    onChange={(on) => patch({ doubles: { redealAt: rules.doubles?.redealAt ?? null, winAt: on ? 5 : null } })}
+                    onChange={(on) => patch({ doubles: { ...rules.doubles, redealAt: rules.doubles?.redealAt ?? null, winAt: on ? 5 : null } })}
                   />
                 </RuleRow>
               </>
@@ -295,7 +309,7 @@ export function EditorScreen({ mode, profileId }: { mode: GameMode; profileId: s
               </RuleRow>
               <RuleRow label="Ponto por passe provocado" badge={<StatusBadge status="pending" />}>
                 <span className="locked">
-                  <Icon name="lock" size={18} /> Relato de Boa Vista em revisão. Valor e aplicação ainda não confirmados — não pode ser ativada.
+                  <Icon name="lock" size={18} /> Variação regional em revisão. Valor e aplicação ainda não confirmados — não pode ser ativada.
                 </span>
               </RuleRow>
             </div>

@@ -94,8 +94,11 @@
   cursor: pointer;
   transition: border-color var(--dur-fast), transform var(--dur-fast) var(--ease-out);
 }
-.mode-card:hover {
-  border-color: var(--brass);
+/* Só em aparelhos com mouse: no celular o :hover "gruda" no último card tocado. */
+@media (hover: hover) {
+  .mode-card:hover {
+    border-color: var(--brass);
+  }
 }
 .mode-card:active {
   transform: scale(0.99);
@@ -388,4 +391,137 @@
 .home__update {
   margin-top: var(--sp-2);
   color: var(--text-2);
+}
+
+/* Livro de regras */
+.rulebook__tabs {
+  position: sticky;
+  top: calc(52px + env(safe-area-inset-top));
+  z-index: 5;
+  display: flex;
+  gap: var(--sp-2);
+  overflow-x: auto;
+  padding: var(--sp-2) var(--sp-4);
+  background: var(--bg);
+  scrollbar-width: none;
+  width: 100%;
+  max-width: var(--content-max);
+  margin: 0 auto;
+}
+.rulebook__tabs::-webkit-scrollbar {
+  display: none;
+}
+.rulebook__tab {
+  flex: none;
+  min-height: 40px;
+  padding: 0 var(--sp-4);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text-2);
+  font-weight: 600;
+  font-size: var(--fs-sm);
+}
+.rulebook__tab.is-active {
+  background: var(--brass);
+  border-color: var(--brass);
+  color: var(--text-on-accent);
+}
+.rulebook__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.rulebook__h {
+  font-size: var(--fs-xl);
+}
+.rulebook__note {
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  border-left: 3px solid var(--brass);
+  padding-left: var(--sp-3);
+}
+.rulebook__facts,
+.rulebook__glossary {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+}
+.rulebook__facts > div,
+.rulebook__glossary > div {
+  display: grid;
+  grid-template-columns: 7.5rem 1fr;
+  gap: var(--sp-3);
+  padding: var(--sp-2) 0;
+  border-top: 1px solid var(--line);
+}
+.rulebook__facts > div:first-child,
+.rulebook__glossary > div:first-child {
+  border-top: 0;
+}
+.rulebook__glossary > div {
+  grid-template-columns: 1fr;
+  gap: 2px;
+}
+.rulebook__facts dt,
+.rulebook__glossary dt {
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+.rulebook__glossary dt {
+  color: var(--brass-strong);
+  font-weight: 700;
+}
+.rulebook__facts dd,
+.rulebook__glossary dd {
+  margin: 0;
+}
+
+.profile__rules > summary {
+  cursor: pointer;
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  padding: var(--sp-2) 0;
+}
+.profile__rules[open] > summary {
+  margin-bottom: var(--sp-2);
+}
+
+.setup__more {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+.setup__more > summary {
+  cursor: pointer;
+  padding: var(--sp-4);
+  font-weight: 700;
+  list-style: none;
+}
+.setup__more > summary::-webkit-details-marker {
+  display: none;
+}
+.setup__more > summary::after {
+  content: '▾';
+  float: right;
+  color: var(--text-2);
+}
+.setup__more[open] > summary::after {
+  content: '▴';
+}
+.setup__more > summary .muted {
+  font-weight: 400;
+  font-size: var(--fs-sm);
+}
+.setup__more-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5, 20px);
+  padding: 0 var(--sp-4) var(--sp-4);
+}
+
+.field__hint-warn {
+  font-size: var(--fs-xs);
+  color: var(--brass-strong);
 }

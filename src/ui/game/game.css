@@ -217,7 +217,7 @@
   padding: 6px 4px;
   border-radius: 16px;
   gap: 4px;
-  width: 58px;
+  width: 68px;
   text-align: center;
 }
 .seat--left .seat__info,
@@ -226,8 +226,15 @@
 }
 .seat--left .seat__name,
 .seat--right .seat__name {
-  max-width: 52px;
-  font-size: var(--fs-xs);
+  max-width: 62px;
+  font-size: 0.75rem;
+  letter-spacing: -0.01em;
+}
+.seat__tag {
+  font-size: 0.5625rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 .seat--left .seat__meta,
 .seat--right .seat__meta {
@@ -363,6 +370,7 @@
 }
 .game__me.is-active .game__status {
   color: var(--brass-strong);
+  font-size: var(--fs-md, 1rem);
 }
 .game__turn-dot {
   width: 10px;
@@ -547,6 +555,42 @@
   color: var(--side);
   font-weight: 700;
   font-size: var(--fs-sm);
+}
+.round-end__score {
+  position: relative;
+}
+.round-end__gain {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  font-style: normal;
+  font-weight: 800;
+  font-size: var(--fs-md);
+  color: var(--side);
+  animation: gain-pop 0.5s ease-out both;
+}
+@keyframes gain-pop {
+  from { transform: scale(0.4); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+.round-end__out {
+  color: var(--success);
+  font-weight: 700;
+}
+.round-end__secondary {
+  display: flex;
+  gap: var(--sp-2);
+}
+.round-end__secondary .btn {
+  flex: 1;
+}
+.round-end__peek {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--sp-6) + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 40;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
 }
 .round-end__score strong {
   font-family: var(--font-display);

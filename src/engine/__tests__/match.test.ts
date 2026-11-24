@@ -263,6 +263,43 @@ describe('carroças na distribuição (Passe e Bate)', () => {
     expect(redealt).toBeGreaterThan(0);
   });
 
+  function playOut(m: MatchState): MatchState {
+    let cur = m;
+    for (let i = 0; i < 200 && cur.status === 'playing' && !cur.round.result; i++) {
+      const seat = cur.round.turn;
+      const mv = legalMoves(cur, seat)[0];
+      cur = mv ? applyAction(cur, { type: 'play', seat, tileId: mv.tileId, arm: mv.arm }) : applyAction(cur, { type: 'pass', seat });
+    }
+    return cur;
+  }
+  const redealSeed = (overrides = {}) => {
+    for (let seed = 1; seed <= 500; seed++) {
+      const m = matchWith('pb-paraiba', overrides, seed);
+      const start = m.round.events[0];
+      if (start?.kind === 'round-start' && start.redeals?.length) return seed;
+    }
+    throw new Error('sem redistribuição');
+  };
+
+  it('a rodada redistribuída por quatro carroças vale o dobro', () => {
+    const seed = redealSeed();
+    const end = playOut(matchWith('pb-paraiba', {}, seed));
+    const r = end.round.result!;
+    const normal = playOut(matchWith('pb-paraiba', { doubles: { redealAt: 4, winAt: 5, bonus: 'none' } }, seed)).round.result!;
+    if (normal.points > 0) {
+      expect(r.bonus).toBe('double');
+      expect(r.points).toBe(normal.points * 2);
+    }
+  });
+
+  it('com a opção +1, a rodada redistribuída vale um ponto a mais', () => {
+    const o = { doubles: { redealAt: 4, winAt: 5, bonus: 'plus-one' as const } };
+    const seed = redealSeed(o);
+    const r = playOut(matchWith('pb-paraiba', o, seed)).round.result!;
+    const normal = playOut(matchWith('pb-paraiba', { doubles: { redealAt: 4, winAt: 5, bonus: 'none' } }, seed)).round.result!;
+    if (normal.points > 0) expect(r.points).toBe(normal.points + 1);
+  });
+
   it('desligada, quatro carroças não embaralham de novo', () => {
     let four = 0;
     for (let seed = 1; seed <= 300; seed++) {

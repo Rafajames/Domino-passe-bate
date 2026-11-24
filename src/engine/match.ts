@@ -287,7 +287,18 @@ function expireClaim(round: RoundState, actingSeat: number): RoundState {
   return { ...round, pendingClaim: null, events };
 }
 
-function endRound(match: MatchState, round: RoundState, result: RoundResult, scores: readonly number[]): MatchState {
+/** Rodada que veio de uma redistribuição por carroças vale mais (dobro ou +1), conforme a regra. */
+function withRedealBonus(rules: RuleSet, round: RoundState, result: RoundResult): RoundResult {
+  const bonus = rules.doubles?.bonus;
+  if (rules.mode !== 'passe-bate' || !bonus || bonus === 'none' || result.points <= 0) return result;
+  if (result.type !== 'domino' && result.type !== 'blocked') return result;
+  const start = round.events.find((e) => e.kind === 'round-start');
+  if (!start || start.kind !== 'round-start' || !start.redeals?.length) return result;
+  return { ...result, bonus, points: bonus === 'double' ? result.points * 2 : result.points + 1 };
+}
+
+function endRound(match: MatchState, round: RoundState, rawResult: RoundResult, scores: readonly number[]): MatchState {
+  const result = withRedealBonus(match.frozen.rules, round, rawResult);
   const finalScores = result.winnerSide !== null ? withScore(scores, result.winnerSide, result.points) : scores.slice();
   const finishedRound: RoundState = {
     ...round,
@@ -402,7 +413,7 @@ export function applyAction(match: MatchState, action: GameAction): MatchState {
       if (!canPass(match, action.seat)) throw new IllegalActionError('Passe não permitido: há jogada ou compra disponível.');
       let round = expireClaim(match.round, action.seat);
       const openValues = openEnds(round.board).map((e) => e.value);
-      // Pontuação por passe provocado (Boa Vista): PENDENTE — intencionalmente não aplicada.
+      // Pontuação por passe provocado (variação regional): PENDENTE — intencionalmente não aplicada.
       round = {
         ...round,
         passesInRow: round.passesInRow + 1,

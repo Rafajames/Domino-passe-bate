@@ -53,7 +53,7 @@ export function PlayerScreen() {
             <div className="stat"><div className="stat__value">{all.played ? Math.round(all.winRate * 100) : 0}%</div><div className="stat__label">Aproveitamento</div></div>
           </div>
           <div className="list" style={{ marginTop: 12 }}>
-            {(['passe-bate', 'all-fives'] as const).map((m) => {
+            {(['passe-bate', 'all-fives', 'burrinha'] as const).map((m) => {
               const s = statsFor(history, m);
               return (
                 <div key={m} className="list__item" aria-disabled="true" style={{ cursor: 'default', opacity: 1 }}>
@@ -147,9 +147,10 @@ export function PlayerScreen() {
           <h2 className="section-title" style={{ marginBottom: 8 }}>Aplicativo</h2>
           <div className="panel" style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <span className="list__main">
-              <span className="rule-row__label">Versão {pwa.version}</span>
+              <span className="rule-row__label">
+                {pwa.builtAt ? `Versão de ${new Date(pwa.builtAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}` : `Versão ${pwa.version}`}
+              </span>
               <span className="rule-row__hint">
-                {pwa.builtAt ? `Publicada em ${new Date(pwa.builtAt).toLocaleString('pt-BR')} · ` : ''}
                 {pwa.installed ? 'Instalado' : 'No navegador'} · atualiza sozinho
               </span>
             </span>
@@ -166,17 +167,6 @@ export function PlayerScreen() {
           </div>
         </section>
 
-        <section>
-          <h2 className="section-title" style={{ marginBottom: 8 }}>Online</h2>
-          <div className="list">
-            {['Ranking e rating competitivo', 'Conquistas e medalhas', 'Amigos e duplas favoritas'].map((t) => (
-              <div key={t} className="list__item" aria-disabled="true">
-                <span className="list__main"><span className="list__label">{t}</span></span>
-                <span className="badge badge--soon">Requer conta · em breve</span>
-              </div>
-            ))}
-          </div>
-        </section>
       </div>
     </main>
   );

@@ -7,7 +7,7 @@ export interface RuleLine {
   status?: RuleStatus;
 }
 
-export const MODE_LABEL = { 'passe-bate': 'Passe e Bate', 'all-fives': 'All Fives', burrinha: 'Burrinha' } as const;
+export const MODE_LABEL = { 'passe-bate': 'Passe e Bate', 'all-fives': 'De 5 em 5', burrinha: 'Burrinha' } as const;
 
 const OPENING: Record<RuleSet['opening'], string> = {
   'double-six': 'Carroça de seis abre',
@@ -47,7 +47,9 @@ export function describeRules(rules: RuleSet, status: Record<string, RuleStatus>
             key: 'doubles',
             label: 'Carroças na mão',
             value: [
-              rules.doubles.redealAt ? `com ${rules.doubles.redealAt}, embaralha de novo` : null,
+              rules.doubles.redealAt
+                ? `com ${rules.doubles.redealAt}, embaralha de novo${rules.mode === 'passe-bate' && rules.doubles.bonus === 'double' ? ' e a rodada vale o dobro' : rules.mode === 'passe-bate' && rules.doubles.bonus === 'plus-one' ? ' e a rodada vale +1 ponto' : ''}`
+                : null,
               rules.doubles.winAt ? `com ${rules.doubles.winAt} ou mais, ganha a partida` : null,
             ]
               .filter(Boolean)

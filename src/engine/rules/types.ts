@@ -5,6 +5,8 @@
  * copiado e congelado (FrozenRules) — mudanças posteriores no perfil não afetam
  * partidas em andamento.
  */
+export type DoublesBonus = 'none' | 'double' | 'plus-one';
+
 export type GameMode = 'passe-bate' | 'all-fives' | 'burrinha';
 
 /** Origem/confiabilidade de uma regra. Nunca tratar regionais como universais. */
@@ -55,14 +57,14 @@ export interface AllFivesRules {
   /** Encerrar a partida assim que alguém atingir a meta, mesmo no meio da mão. */
   winImmediately: boolean;
   /**
-   * Pontuação por passe provocado (relato de Boa Vista-RR).
+   * Pontuação por passe provocado (variação regional).
    * PENDENTE: valor e aplicação em revisão. Não implementada; sempre desativada.
    */
   passBonus: { status: 'pending'; enabled: false; points: null };
 }
 
 /**
- * Burrinha (Paraíba): cada um começa com poucas pedras; quem perde a rodada
+ * Burrinha: cada um começa com poucas pedras; quem perde a rodada
  * recomeça a próxima com mais pedras, até o dorme acabar.
  */
 export interface BurrinhaRules {
@@ -119,9 +121,11 @@ export interface RuleSet {
    * Carroças na mão ao distribuir (regra do usuário para a Passe e Bate):
    * - `redealAt`: com essa quantidade, embaralha e distribui de novo;
    * - `winAt`: com essa quantidade ou mais, o jogador ganha a partida na hora.
+   * - `bonus`: a rodada redistribuída vale mais — 'double' (o dobro, regra mais registrada),
+   *   'plus-one' (+1 ponto, costume regional) ou 'none'. Ausente = 'none'.
    * null = desligado. Ausente em dados antigos = desligado.
    */
-  doubles?: { redealAt: number | null; winAt: number | null };
+  doubles?: { redealAt: number | null; winAt: number | null; bonus?: DoublesBonus };
   assists: Assists;
 }
 

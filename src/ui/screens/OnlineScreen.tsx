@@ -77,7 +77,7 @@ function Hub({ initialCode }: { initialCode?: string }) {
         <div className="field">
           <label className="field__label" htmlFor="online-name">Seu nome na mesa</label>
           <input id="online-name" className="input" value={name} maxLength={20} onChange={(e) => setName(e.target.value)} placeholder="Como os amigos vão te ver" />
-          {!nameOk && <span className="muted" style={{ fontSize: 'var(--fs-xs)' }}>Digite seu nome para criar ou entrar numa sala.</span>}
+          {!nameOk && <span className="field__hint-warn">Digite seu nome (2 letras ou mais) para criar ou entrar numa sala.</span>}
         </div>
       </section>
       <section className="panel" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -97,6 +97,7 @@ function Hub({ initialCode }: { initialCode?: string }) {
         <button className="btn btn--primary" disabled={code.length !== 6 || !nameOk} onClick={() => (commitName(), joinRoom(code))}>
           Entrar
         </button>
+        {!nameOk && <span className="muted" style={{ fontSize: 'var(--fs-xs)', textAlign: 'center' }}>Falta o seu nome lá em cima.</span>}
         {last && last !== code && (
           <button className="btn btn--sm btn--ghost" disabled={!nameOk} onClick={() => (commitName(), joinRoom(last))}>
             Reconectar à última sala ({last})
@@ -111,7 +112,7 @@ function Hub({ initialCode }: { initialCode?: string }) {
           <select id="room-profile" className="input" value={profileId} onChange={(e) => setProfileId(e.target.value)}>
             {all.map((p) => (
               <option key={p.id} value={p.id}>
-                {MODE_LABEL[p.mode]} — {p.name}
+                {p.name.startsWith(MODE_LABEL[p.mode]) ? p.name : `${MODE_LABEL[p.mode]} — ${p.name}`}
               </option>
             ))}
           </select>
@@ -137,7 +138,13 @@ function Hub({ initialCode }: { initialCode?: string }) {
               />
             </div>
             {tableRules.players === 4 && (
-              <Switch label="Jogar em duplas (você + o jogador à sua frente)" checked={tableRules.teams} onChange={setTeamsSel} />
+              <div className="rule-row rule-row--inline" style={{ padding: 0, border: 0 }}>
+                <span className="list__main">
+                  <span className="rule-row__label">Jogar em duplas</span>
+                  <span className="rule-row__hint">Você joga com quem senta à sua frente.</span>
+                </span>
+                <Switch label="Jogar em duplas" checked={tableRules.teams} onChange={setTeamsSel} />
+              </div>
             )}
             <div className="field">
               <span className="field__label">Amigos que podem entrar pelo link</span>
@@ -166,6 +173,7 @@ function Hub({ initialCode }: { initialCode?: string }) {
         <button className="btn btn--primary" disabled={!profile || !tableRules || tableErrors.length > 0 || !nameOk} onClick={() => profile && tableRules && (commitName(), createRoom(profile, tableRules, difficulty, maxGuests))}>
           <Icon name="plus" size={18} /> Criar sala
         </button>
+        {!nameOk && <span className="muted" style={{ fontSize: 'var(--fs-xs)', textAlign: 'center' }}>Falta o seu nome lá em cima.</span>}
       </section>
 
       <section className="panel" style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
@@ -177,14 +185,6 @@ function Hub({ initialCode }: { initialCode?: string }) {
         </p>
       </section>
 
-      <div className="list">
-        {['Ranking e temporadas', 'Torneios', 'Partida rápida com desconhecidos'].map((t) => (
-          <div key={t} className="list__item" aria-disabled="true">
-            <span className="list__main"><span className="list__label">{t}</span></span>
-            <span className="badge badge--soon">Requer servidor · em breve</span>
-          </div>
-        ))}
-      </div>
     </>
   );
 }

@@ -41,6 +41,8 @@ export interface RoundResult {
   readonly winnerSide: number | null;
   readonly batida: BatidaType | null;
   readonly points: number;
+  /** Rodada redistribuída por carroças: pontos dobrados ou +1 (já incluídos em `points`). */
+  readonly bonus?: 'double' | 'plus-one';
   /** Burrinha: quem perdeu a rodada (recebe pedras a mais). */
   readonly loserSeats?: readonly number[];
   readonly pipCounts: readonly number[];

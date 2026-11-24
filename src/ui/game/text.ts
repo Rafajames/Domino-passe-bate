@@ -25,8 +25,18 @@ export const BATIDA_LABEL: Record<BatidaType, string> = {
   laELoCarroca: 'Lá e lô de carroça',
 };
 
+/**
+ * Lado de quem está olhando a tela. Em duplas, "Nós" é sempre o lado do jogador deste aparelho —
+ * no online o convidado pode estar no lado 1. A tela de jogo atualiza a cada render.
+ */
+let viewSide = 0;
+export function setViewSide(side: number): void {
+  viewSide = side;
+}
+export const getViewSide = () => viewSide;
+
 export function sideName(side: number, rules: RuleSet, players: readonly PlayerSlot[]): string {
-  if (rules.teams) return side === 0 ? 'Nós' : 'Eles';
+  if (rules.teams) return side === viewSide ? 'Nós' : 'Eles';
   return players[side]?.name ?? `Jogador ${side + 1}`;
 }
 
@@ -34,7 +44,7 @@ export function eventText(e: GameEvent, players: readonly PlayerSlot[], rules: R
   const name = (seat: number) => players[seat]?.name ?? `Jogador ${seat + 1}`;
   switch (e.kind) {
     case 'round-start':
-      return `${redealText(e.redeals, players)}Rodada ${e.round + 1}: ${name(e.starter)} sai${e.mustOpenWith ? ` com a ${tileName(e.mustOpenWith)}` : e.mustOpenDouble ? ' de carroça' : ''}.`;
+      return `${redealText(e.redeals, players, rules)}Rodada ${e.round + 1}: ${name(e.starter)} sai${e.mustOpenWith ? ` com a ${tileName(e.mustOpenWith)}` : e.mustOpenDouble ? ' de carroça' : ''}.`;
     case 'play':
       return `${name(e.seat)} jogou ${e.tile.a === e.tile.b ? 'a ' : ''}${tileName(e.tile.id)} ${ARM_LABEL[e.arm]}.${rules.mode === 'all-fives' ? ` Pontas: ${e.endsSum}.` : ''}`;
     case 'draw':
@@ -54,10 +64,12 @@ export function eventText(e: GameEvent, players: readonly PlayerSlot[], rules: R
 
 const NUM = ['zero', 'uma', 'duas', 'três', 'quatro', 'cinco', 'seis', 'sete'];
 
-/** "Biu veio com quatro carroças: embaralhado de novo." (uma frase por redistribuição) */
-export function redealText(redeals: readonly { seat: number; doubles: number }[] | undefined, players: readonly PlayerSlot[]): string {
+/** "João veio com quatro carroças: embaralhado de novo." (uma frase por redistribuição) */
+export function redealText(redeals: readonly { seat: number; doubles: number }[] | undefined, players: readonly PlayerSlot[], rules?: RuleSet): string {
   if (!redeals?.length) return '';
-  return redeals.map((r) => `${players[r.seat]?.name ?? `Jogador ${r.seat + 1}`} veio com ${NUM[r.doubles] ?? r.doubles} carroças: embaralhado de novo. `).join('');
+  const bonus = rules?.mode === 'passe-bate' ? rules.doubles?.bonus : undefined;
+  const note = bonus === 'double' ? 'Esta rodada vale o dobro. ' : bonus === 'plus-one' ? 'Esta rodada vale 1 ponto a mais. ' : '';
+  return redeals.map((r) => `${players[r.seat]?.name ?? `Jogador ${r.seat + 1}`} veio com ${NUM[r.doubles] ?? r.doubles} carroças: embaralhado de novo. `).join('') + note;
 }
 
 export function burrinhaLosers(r: RoundResult, players: readonly PlayerSlot[]): string {
@@ -85,8 +97,9 @@ export function resultDetail(r: RoundResult, players: readonly PlayerSlot[], rul
   }
   const who = r.winnerSeat !== null ? players[r.winnerSeat]?.name : r.winnerSide !== null ? sideName(r.winnerSide, rules, players) : null;
   if (r.winnerSide === null) return r.type === 'blocked' ? 'Empate na menor mão. Ninguém pontuou.' : 'Ninguém pontuou.';
-  if (r.type === 'blocked') return `Vitória de ${who} pela menor mão: +${pts(r.points)}.`;
-  return `${who} bateu e ${rules.teams ? 'a dupla ganhou' : 'ganhou'} ${pts(r.points)}.`;
+  const extra = r.bonus === 'double' ? ' (rodada valendo o dobro)' : r.bonus === 'plus-one' ? ' (com o ponto a mais das carroças)' : '';
+  if (r.type === 'blocked') return `Vitória de ${who} pela menor mão: +${pts(r.points)}${extra}.`;
+  return `${who} bateu e ${rules.teams ? 'a dupla ganhou' : 'ganhou'} ${pts(r.points)}${extra}.`;
 }
 
 export function resultText(r: RoundResult, players: readonly PlayerSlot[], rules: RuleSet): string {
